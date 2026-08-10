@@ -233,15 +233,25 @@ function App() {
   );
 }
 
+const AUTH_TOKEN_KEYS = ['token', 'access_token', 'auth_token'];
+const getStoredAuthToken = () => AUTH_TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
+
+const extractUserRole = (user) => {
+  if (!user) return '';
+  if (typeof user.role === 'string') return user.role.toLowerCase();
+  if (typeof user.role === 'object') return (user.role.role_name || user.role.role || '').toLowerCase();
+  return (user.role_name || '').toLowerCase();
+};
+
 // Root redirect based on auth status
 const RootRedirect = () => {
-  const token = localStorage.getItem('token');
+  const token = getStoredAuthToken();
   const userStr = localStorage.getItem('user');
-  
+
   if (token && userStr) {
     try {
       const user = JSON.parse(userStr);
-      const role = user.role?.toLowerCase();
+      const role = extractUserRole(user);
       if (role === 'admin') return <Navigate to="/admin/dashboard" replace />;
       if (role === 'waiter') return <Navigate to="/waiter/dashboard" replace />;
       if (role === 'cashier') return <Navigate to="/cashier/dashboard" replace />;

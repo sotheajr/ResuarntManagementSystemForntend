@@ -5,6 +5,24 @@ const AUTH_TOKEN_KEYS = ['token', 'access_token', 'auth_token'];
 
 const getStoredToken = () => AUTH_TOKEN_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
 
+const getUserRole = (user) => {
+  if (!user) return '';
+  if (typeof user.role === 'string') return user.role;
+  if (typeof user.role === 'object') return user.role.role_name || user.role.role || '';
+  return user.role_name || '';
+};
+
+const normalizeUser = (user) => {
+  if (!user) return null;
+  const role = getUserRole(user);
+  const role_id = user.role_id ?? user.Role_ID ?? user.role?.role_id ?? null;
+  return {
+    ...user,
+    role: role || user.role,
+    role_id,
+  };
+};
+
 const normalizeAuthResponse = (response) => {
   const responseBody = response?.data || {};
   const payload = responseBody.data || responseBody;
@@ -13,7 +31,7 @@ const normalizeAuthResponse = (response) => {
   const user = payload.user || responseBody.user || payload.data?.user || responseBody.data?.user;
   const permissions = payload.permissions || responseBody.permissions || [];
 
-  return { token, user, permissions };
+  return { token, user: normalizeUser(user), permissions };
 };
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
@@ -43,9 +61,10 @@ export const AuthProvider = ({ children }) => {
     if (token && storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
+        const normalizedUser = normalizeUser(parsedUser);
         // Validate that the user has the expected structure
-        if (parsedUser && (parsedUser.role || parsedUser.role_id)) {
-          setUser(parsedUser);
+        if (normalizedUser && (normalizedUser.role || normalizedUser.role_id)) {
+          setUser(normalizedUser);
           if (storedPermissions) {
             setPermissions(JSON.parse(storedPermissions));
           }
@@ -84,7 +103,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('access_token', token);
       localStorage.setItem('auth_token', token);
       localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('user_role', userData.role || userData.role_name || 'Admin');
+      localStorage.setItem('user_role', userData.role || userData.role_name || userData.role?.role_name || 'Admin');
 
       if (Array.isArray(userPermissions) && userPermissions.length > 0) {
         localStorage.setItem('permissions', JSON.stringify(userPermissions));
@@ -243,6 +262,7 @@ export const AuthProvider = ({ children }) => {
     updateUserImage,
     updateUserProfile,
     refreshProfile,
+    setUser,
     isAdmin,
     isWaiter,
     isCashier,

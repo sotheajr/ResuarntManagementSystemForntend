@@ -12,7 +12,7 @@ const LoginPage = () => {
   const [isConnectionError, setIsConnectionError] = useState(false);
   const [isPendingApproval, setIsPendingApproval] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
-  const { login, error, loading, isAuthenticated, user, clearError } = useAuth();
+  const { login, error, loading, isAuthenticated, user, clearError, setUser } = useAuth();
   const navigate = useNavigate();
 
   // Clear any stale errors on mount
@@ -71,6 +71,10 @@ const LoginPage = () => {
       if (loggedUser) {
         localStorage.setItem('user', JSON.stringify(loggedUser));
         localStorage.setItem('user_role', loggedUser.role || loggedUser.role_name || 'Admin');
+
+        if (typeof setUser === 'function') {
+          setUser(loggedUser);
+        }
       }
 
       window.location.href = path;
