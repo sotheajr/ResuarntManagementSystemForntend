@@ -1,0 +1,53 @@
+{
+  "name": "Restaurant Management System",
+  "short_name": "RMS",
+  "description": "Complete restaurant management system — POS checkout, KHQR/ABA payments, menu categories, inventory, reservations, payroll, attendance, and sales reports.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#FAFAFA",
+  "theme_color": "#0f766e",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "food", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/images/Logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Cashier Dashboard",
+      "short_name": "POS",
+      "description": "Open the POS / cashier checkout dashboard",
+      "url": "/cashier/dashboard",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Waiter Dashboard",
+      "short_name": "Waiter",
+      "description": "Open the waiter tables & orders dashboard",
+      "url": "/waiter/dashboard",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

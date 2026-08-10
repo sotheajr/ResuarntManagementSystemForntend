@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /waiter
+Disallow: /cashier
+Disallow: /qr-display
+
+Sitemap: https://restaurant.example.com/sitemap.xml

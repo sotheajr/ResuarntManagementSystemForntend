@@ -1,0 +1,127 @@
+@import './styles/dark-theme.css';
+@import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&family=Noto+Sans+Khmer:wght@100;200;300;400;500;600;700;800;900&family=Moul&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Define Global Gradient Variables */
+:root {
+  --gradient-amber-rose-pink: linear-gradient(135deg, #FBBF24 0%, #FB7185 50%, #EC4899 100%);
+}
+
+/* Spinner Rotate Keyframes */
+@keyframes spin-gradient {
+  to { transform: rotate(360deg); }
+}
+
+@layer base {
+  html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-[#FAFAFA] dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased;
+    line-height: 1.6;
+  }
+
+  /* Khmer font styling when language is set to Khmer */
+  html[data-lang="kh"] body,
+  html[data-lang="kh"] .khmer-font,
+  .lang-kh {
+    font-family: 'Moul', 'Noto Sans Khmer', 'Kantumruy Pro', 'Khmer OS Metal Chrieng', 'Khmer OS', system-ui, sans-serif;
+    line-height: 1.8;
+  }
+
+  /* Khmer font for headings and titles — using Moul for authentic Khmer look */
+  html[data-lang="kh"] h1,
+  html[data-lang="kh"] h2,
+  html[data-lang="kh"] h3,
+  html[data-lang="kh"] h4,
+  html[data-lang="kh"] h5,
+  html[data-lang="kh"] h6,
+  html[data-lang="kh"] th,
+  html[data-lang="kh"] .khmer-heading {
+    font-family: 'Moul', 'Noto Sans Khmer', 'Kantumruy Pro', 'Khmer OS', system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+
+  /* Khmer font for all text content including table cells */
+  html[data-lang="kh"] td,
+  html[data-lang="kh"] span,
+  html[data-lang="kh"] p,
+  html[data-lang="kh"] div:not([class*="lucide"]),
+  html[data-lang="kh"] label,
+  html[data-lang="kh"] input,
+  html[data-lang="kh"] select,
+  html[data-lang="kh"] textarea {
+    font-family: 'Noto Sans Khmer', 'Kantumruy Pro', 'Khmer OS', system-ui, sans-serif;
+  }
+
+  /* Khmer font for buttons and interactive elements */
+  html[data-lang="kh"] button,
+  html[data-lang="kh"] .btn-primary,
+  html[data-lang="kh"] .btn-danger,
+  html[data-lang="kh"] .btn-success,
+  html[data-lang="kh"] .btn-warning,
+  html[data-lang="kh"] .sidebar-link,
+  html[data-lang="kh"] .badge-accent,
+  html[data-lang="kh"] .badge-brand {
+    font-family: 'Noto Sans Khmer', 'Kantumruy Pro', 'Khmer OS', system-ui, sans-serif;
+    font-weight: 500;
+  }
+}
+
+@layer components {
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200;
+  }
+  .sidebar-link-active {
+    @apply bg-white/90 text-rose-700 font-bold shadow-sm backdrop-blur-sm dark:bg-rose-600 dark:text-white;
+  }
+  .sidebar-link-inactive {
+    @apply text-slate-900 font-semibold hover:bg-white/30 transition-colors dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white;
+  }
+  .btn-primary {
+    @apply bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-warning {
+    @apply bg-accent-400 hover:bg-accent-500 text-accent-900 font-bold py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  .btn-danger {
+    @apply bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  .btn-success {
+    @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  .input-field {
+    @apply w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all duration-200 text-base;
+  }
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6;
+  }
+  .card-soft {
+    @apply bg-rose-50/50 dark:bg-rose-900/10 rounded-xl border border-rose-100 dark:border-rose-900/20 p-6;
+  }
+  .badge-accent {
+    @apply bg-accent-400 text-accent-900 font-bold px-3 py-1 rounded-full text-sm;
+  }
+  .badge-brand {
+    @apply bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 font-semibold px-3 py-1 rounded-full text-sm;
+  }
+}
+
+/* Khmer text spacing improvement */
+html[data-lang="kh"] .truncate {
+  line-height: 1.6;
+}
+
+/* Ensure Moul font is applied to page titles in Khmer */
+html[data-lang="kh"] .text-2xl.font-bold,
+html[data-lang="kh"] .text-lg.font-semibold,
+html[data-lang="kh"] .text-xl.font-bold {
+  font-family: 'Moul', 'Noto Sans Khmer', 'Kantumruy Pro', system-ui, sans-serif;
+}

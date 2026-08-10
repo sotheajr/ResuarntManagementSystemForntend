@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/jpeg" href="/images/Logo.jpg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- ==================== PWA MANIFEST ==================== -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RMS" />
+    <meta name="msapplication-TileColor" content="#0f766e" />
+    <meta name="application-name" content="Restaurant Management System" />
+    <meta name="apple-mobile-web-app-orientations" content="portrait" />
+
+    <!-- ==================== APPLE TOUCH ICON ==================== -->
+    <link rel="apple-touch-icon" href="/icons/icon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/Logo.jpg" />
+
+    <!-- ==================== PRIMARY SEO META ==================== -->
+    <title>Restaurant Management System | POS, Orders, Payroll & Reports</title>
+    <meta
+      name="description"
+      content="Complete restaurant management system for Cambodia — manage POS checkout, KHQR/ABA payments, menu categories, inventory, reservations, payroll, attendance, and sales reports all in one place."
+    />
+    <meta
+      name="keywords"
+      content="restaurant management system, POS, KHQR, ABA payment, restaurant software, orders, inventory, payroll, attendance, sales reports, Cambodia, Phnom Penh"
+    />
+    <meta name="author" content="Restaurant Management System" />
+    <meta name="robots" content="index, follow" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="theme-color" content="#0f766e" />
+
+    <!-- ==================== CANONICAL URL ==================== -->
+    <link rel="canonical" href="https://restaurant.example.com/" />
+
+    <!-- ==================== OPEN GRAPH / FACEBOOK ==================== -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Restaurant Management System" />
+    <meta property="og:title" content="Restaurant Management System | POS, Orders, Payroll & Reports" />
+    <meta
+      property="og:description"
+      content="Complete restaurant management system for Cambodia — manage POS checkout, KHQR/ABA payments, menu categories, inventory, reservations, payroll, attendance, and sales reports all in one place."
+    />
+    <meta property="og:url" content="https://restaurant.example.com/" />
+    <meta property="og:image" content="https://restaurant.example.com/images/Logo.jpg" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="km_KH" />
+
+    <!-- ==================== TWITTER CARD ==================== -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Restaurant Management System | POS, Orders, Payroll & Reports" />
+    <meta
+      name="twitter:description"
+      content="Complete restaurant management system for Cambodia — manage POS checkout, KHQR/ABA payments, menu categories, inventory, reservations, payroll, attendance, and sales reports."
+    />
+    <meta name="twitter:image" content="https://restaurant.example.com/images/Logo.jpg" />
+
+    <!-- ==================== TELEGRAM CARD ==================== -->
+    <!-- Telegram link previews use Open Graph meta tags.
+         Adding explicit image width/height/type helps Telegram
+         render the preview card correctly in chat. -->
+    <meta property="og:title" content="Restaurant Management System | POS, Orders, Payroll & Reports" />
+    <meta property="og:description" content="Manage POS, KHQR/ABA payments, menu categories, inventory, reservations, payroll & sales reports — all in one restaurant management system." />
+    <meta property="og:image" content="https://restaurant.example.com/images/Logo.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:url" content="https://restaurant.example.com/" />
+    <meta property="og:site_name" content="Restaurant Management System" />
+
+    <!-- ==================== STRUCTURED DATA (JSON-LD) ==================== -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Restaurant",
+        "name": "Restaurant Management System",
+        "alternateName": "RMS",
+        "description": "Complete restaurant management system for Cambodia — manage POS checkout, KHQR/ABA payments, menu categories, inventory, reservations, payroll, attendance, and sales reports.",
+        "url": "https://restaurant.example.com/",
+        "image": "https://restaurant.example.com/images/Logo.jpg",
+        "servesCuisine": ["Khmer", "Asian", "Western"],
+        "priceRange": "$",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "123 Main Street",
+          "addressLocality": "Phnom Penh",
+          "addressCountry": "KH"
+        },
+        "telephone": "+855-23-000-000",
+        "openingHours": "Mo-Su 06:00-22:00",
+        "sameAs": []
+      }
+    </script>
+
+    <!-- ==================== MANIFEST / PWA (if needed) ==================== -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
