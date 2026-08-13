@@ -212,6 +212,9 @@ export const reportsAPI = {
   getById: (id) => api.get(`/reports/${id}`),
   generate: (data) => api.post('/reports', data),
   update: (id, data) => api.put(`/reports/${id}`, data),
+// ==================== ORDERS ENDPOINTS ====================
+
+
   delete: (id) => api.delete(`/reports/${id}`),
   salesSummary: (params) => api.get('/reports/sales/summary', { params }),
   paymentMethods: (params) => api.get('/reports/sales/payment-methods', { params }),
