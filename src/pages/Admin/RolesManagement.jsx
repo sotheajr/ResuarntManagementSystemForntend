@@ -18,63 +18,32 @@ import {
   Lock,
 } from 'lucide-react';
 
-// Permission groups for logical organization in the grid
+import { useState, useEffect } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
+import { t } from '../../translations/common';
+import { getRolesWithPermissions, updateRolePermissions, createRole, updateRole, deleteRole } from '../../services/roleService';
+import { Loader2, AlertCircle, X, Trash2, Shield, ShieldCheck, Plus, Save, Pencil, CheckCircle2, Lock } from 'lucide-react';
+
 const PERMISSION_GROUPS = [
-  {
-    name: 'Users & Roles',
-    permissions: ['Manage_Users', 'Manage_Roles'],
-  },
-  {
-    name: 'Menu & Categories',
-    permissions: ['Manage_Categories', 'Manage_Menu'],
-  },
-  {
-    name: 'Tables & Customers',
-    permissions: ['Manage_Tables', 'Manage_Customers'],
-  },
-  {
-    name: 'Orders',
-    permissions: ['View_Order', 'Create_Order', 'Update_Order', 'Delete_Order'],
-  },
-  {
-    name: 'Payments',
-    permissions: ['View_Bill', 'Receive_Payment', 'Print_Receipt'],
-  },
-  {
-    name: 'Reservations',
-    permissions: ['Manage_Reservations', 'Seat_Guest'],
-  },
-  {
-    name: 'Reports',
-    permissions: ['Sales_Report'],
-  },
-  {
-    name: 'Inventory & Suppliers',
-    permissions: ['Inventory', 'Supplier'],
-  },
+  { name: 'Users', table: 'users', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Roles', table: 'roles', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Categories', table: 'categories', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Sub Categories', table: 'sub_categories', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Menu', table: 'menu', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Tables', table: 'tables', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Customers', table: 'customers', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Orders', table: 'orders', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Payments', table: 'payments', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Reservations', table: 'reservations', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Reports', table: 'reports', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Inventory', table: 'inventory', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Suppliers', table: 'suppliers', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Purchases', table: 'purchases', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Partners', table: 'partners', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Attendances', table: 'attendances', actions: ['view', 'create', 'update', 'delete'] },
+  { name: 'Special Actions', table: 'special', permissions: ['seat_guest', 'print_receipt', 'manage_permissions'] },
 ];
 
-// Human-readable labels for permissions
-const PERMISSION_LABELS = {
-  Manage_Users: 'Manage Users',
-  Manage_Roles: 'Manage Roles',
-  Manage_Categories: 'Manage Categories',
-  Manage_Menu: 'Manage Menu',
-  Manage_Tables: 'Manage Tables',
-  Manage_Customers: 'Manage Customers',
-  View_Order: 'View Orders',
-  Create_Order: 'Create Orders',
-  Update_Order: 'Update Orders',
-  Delete_Order: 'Delete Orders',
-  View_Bill: 'View Bill',
-  Receive_Payment: 'Receive Payments',
-  Print_Receipt: 'Print Receipts',
-  Manage_Reservations: 'Manage Reservations',
-  Seat_Guest: 'Seat Guests',
-  Sales_Report: 'Sales Reports',
-  Inventory: 'Inventory',
-  Supplier: 'Suppliers & Purchases',
-};
 
 const RolesManagement = () => {
   const { language } = useLanguage();

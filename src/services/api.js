@@ -35,7 +35,6 @@ api.interceptors.response.use(
 
       // Handle 401 Unauthorized
       if (status === 401) {
-        // Prevent redirect loop if already on login page
         if (!config.url.includes('/login')) {
           localStorage.removeItem('token');
           localStorage.removeItem('access_token');
@@ -50,8 +49,6 @@ api.interceptors.response.use(
       if (status === 403) {
         console.error('Access denied:', error.response.data?.message || 'Forbidden');
       }
-      
-      // Note: 404s are intentionally left to be handled by individual components
     }
     return Promise.reject(error);
   }
@@ -59,7 +56,16 @@ api.interceptors.response.use(
 
 export default api;
 
-// ==================== AUTH ENDPOINTS ====================
+// ==================== API HELPERS ====================
+
+const createApiHelper = (endpoint) => ({
+  getAll: (params = {}) => api.get(`/${endpoint}`, { params }),
+  getById: (id) => api.get(`/${endpoint}/${id}`),
+  create: (data) => api.post(`/${endpoint}`, data),
+  update: (id, data) => api.put(`/${endpoint}/${id}`, data),
+  delete: (id) => api.delete(`/${endpoint}/${id}`),
+});
+
 export const authAPI = {
   login: (credentials) => api.post('/login', credentials),
   register: (data) => api.post('/register', data),
@@ -71,10 +77,29 @@ export const authAPI = {
   updateProfile: (data) => api.put('/profile/update', data),
 };
 
-export const ordersAPI = {
-  getAll: () => api.get('/orders'),
-  getById: (id) => api.get(`/orders/${id}`),
-  create: (data) => api.post('/orders', data),
-  update: (id, data) => api.put(`/orders/${id}`, data),
-  delete: (id) => api.delete(`/orders/${id}`),
+export const ordersAPI = createApiHelper('orders');
+export const paymentsAPI = createApiHelper('payments');
+export const customersAPI = createApiHelper('customers');
+export const tablesAPI = createApiHelper('tables');
+export const menuAPI = createApiHelper('menu');
+export const usersAPI = createApiHelper('users');
+export const attendanceAPI = createApiHelper('attendance');
+export const categoriesAPI = createApiHelper('categories');
+export const subCategoriesAPI = createApiHelper('sub-categories');
+export const inventoryAPI = createApiHelper('inventory');
+export const partnersAPI = createApiHelper('partners');
+export const stripePaymentAPI = {
+    createPaymentIntent: (data) => api.post('/stripe/payment-intent', data),
+    confirmPayment: (data) => api.post('/stripe/confirm', data),
 };
+export const payrollAPI = createApiHelper('payroll');
+export const purchasesAPI = createApiHelper('purchases');
+export const suppliersAPI = createApiHelper('suppliers');
+export const recycleBinAPI = createApiHelper('recycle-bin');
+export const reportsAPI = createApiHelper('reports');
+export const reservationsAPI = createApiHelper('reservations');
+export const rolesAPI = {
+  ...createApiHelper('roles'),
+  updatePermissions: (roleId, permissions) => api.put(`/roles/${roleId}/permissions`, { permissions }),
+};
+
