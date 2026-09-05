@@ -125,7 +125,7 @@ const LoginPage = () => {
                     </p>
                     <ul className="text-red-600 text-xs mt-1 list-disc list-inside space-y-0.5">
                       <li>The Laravel backend is running (php artisan serve)</li>
-                      <li>The backend URL is correct (http://localhost:8000)</li>
+                      <li>The backend URL is correct (https://restaurant-backend-api-xsjc.onrender.com)</li>
                       <li>No firewall is blocking the connection</li>
                     </ul>
                   </div>

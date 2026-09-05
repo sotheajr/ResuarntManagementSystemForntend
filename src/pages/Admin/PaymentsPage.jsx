@@ -19,7 +19,7 @@ const PAYMENT_METHODS = [
   { value: 'Visa', label: 'Visa / Credit Card', icon: CreditCard },
 ];
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://restaurant-backend-api-xsjc.onrender.com';
 
 const PaymentsPage = () => {
   const { user } = useAuth();

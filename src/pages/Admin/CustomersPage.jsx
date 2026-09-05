@@ -8,7 +8,7 @@ import {
   Loader2, UsersRound, Eye, Phone, Mail, MapPin, ImageOff
 } from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://restaurant-backend-api-xsjc.onrender.com';
 
 const CustomersPage = () => {
   const { user, isAdmin } = useAuth();

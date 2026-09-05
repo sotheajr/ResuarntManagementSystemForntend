@@ -7,7 +7,7 @@ import {
   ChefHat, Send, Ban, Minus, Plus as PlusIcon, ShoppingCart
 } from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://restaurant-backend-api-xsjc.onrender.com';
 
 const STATUS_COLORS = {
   Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',

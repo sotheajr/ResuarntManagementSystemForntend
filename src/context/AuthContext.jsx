@@ -34,7 +34,7 @@ const normalizeAuthResponse = (response) => {
   return { token, user: normalizeUser(user), permissions };
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://restaurant-backend-api-xsjc.onrender.com';
 
 const AuthContext = createContext(null);
 

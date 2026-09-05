@@ -12,7 +12,7 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   ? import.meta.env.VITE_API_BASE_URL.replace('/api', '')
-  : 'http://localhost:8000';
+  : 'https://restaurant-backend-api-xsjc.onrender.com';
 
 const PartnersPage = () => {
   const { isAdmin } = useAuth();
@@ -85,7 +85,7 @@ const PartnersPage = () => {
   };
 
   const getImageUrl = (item) => {
-    // Prefer the backend's appended image_url accessor (APP_URL=http://localhost:8000)
+    // Prefer the backend's appended image_url accessor (APP_URL=https://restaurant-backend-api-xsjc.onrender.com)
     if (item.image_url) return item.image_url;
     const rawPath = getField(item, 'IMAGE', 'image');
     if (!rawPath) return null;
