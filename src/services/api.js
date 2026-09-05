@@ -4,10 +4,11 @@ import axios from 'axios';
  * API Service with central interceptors.
  * Base URL defaults to the Backend API.
  */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://restaurant-backend-api-xsjc.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
