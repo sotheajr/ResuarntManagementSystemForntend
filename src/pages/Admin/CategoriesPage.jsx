@@ -268,14 +268,17 @@ const CategoriesPage = () => {
 
   // ==================== Helpers ====================
   const getImageUrl = (category) => {
-    // Use the appended image_url accessor from the backend if available
-    if (category.image_url) return category.image_url;
-    // Fallback: construct URL manually from image path
-    const img = category.image || category.Image;
-    if (!img) return null;
-    if (img.startsWith('http')) return img;
-    const cleanPath = img.replace(/^\/?storage\//, '');
-    return `${API_BASE_URL}/storage/${cleanPath}`;
+    if (!category) return '/placeholder.png';
+    const imagePath = category.image_url || category.image || category.Image;
+    if (!imagePath) return '/placeholder.png';
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    const baseUrl = import.meta.env.VITE_API_BASE_URL 
+      ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, '') 
+      : 'https://restaurant-backend-api-xsjc.onrender.com';
+      
+    return `${baseUrl}/storage/${imagePath.replace(/^\//, '')}`;
   };
 
   // ==================== RENDER ====================
