@@ -4,7 +4,7 @@ import axios from 'axios';
  * API Service with central interceptors.
  * Base URL defaults to the Backend API.
  */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://restaurant-management-system-backend-8cs5.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -58,12 +58,26 @@ export default api;
 
 // ==================== API HELPERS ====================
 
+const isFormData = (data) => data instanceof FormData;
+
 const createApiHelper = (endpoint) => ({
   getAll: (params = {}) => api.get(`/${endpoint}`, { params }),
   getById: (id) => api.get(`/${endpoint}/${id}`),
-  create: (data) => api.post(`/${endpoint}`, data),
-  update: (id, data) => api.put(`/${endpoint}/${id}`, data),
+  create: (data) => api.post(`/${endpoint}`, data, isFormData(data) ? {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  } : {}),
+  // For FormData (file uploads), use POST with _method=PUT spoofing
+  // For JSON data, use PUT directly
+  update: (id, data) => {
+    if (isFormData(data)) {
+      return api.post(`/${endpoint}/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.put(`/${endpoint}/${id}`, data);
+  },
   delete: (id) => api.delete(`/${endpoint}/${id}`),
+  getSubCategories: (categoryId) => api.get(`/${endpoint}/${categoryId}/sub-categories`),
 });
 
 export const authAPI = {
@@ -83,16 +97,38 @@ export const customersAPI = createApiHelper('customers');
 export const tablesAPI = createApiHelper('tables');
 export const menuAPI = createApiHelper('menu');
 export const usersAPI = createApiHelper('users');
-export const attendanceAPI = createApiHelper('attendance');
+export const attendanceAPI = {
+  ...createApiHelper('attendance'),
+  // Self-service endpoints (all authenticated users)
+  todayStatus: () => api.get('/attendance/today-status'),
+  clockIn: () => api.post('/attendance/clock-in', {}),
+  clockOut: () => api.post('/attendance/clock-out', {}),
+  // TESTING UTILITY: reset today's attendance for the current user
+  resetToday: () => api.post('/attendance/reset-today', {}),
+};
 export const categoriesAPI = createApiHelper('categories');
 export const subCategoriesAPI = createApiHelper('sub-categories');
-export const inventoryAPI = createApiHelper('inventory');
+export const inventoryAPI = {
+  ...createApiHelper('inventory'),
+  // GET /api/inventory/low-stock — items where quantity <= minimum_stock
+  getLowStock: () => api.get('/inventory/low-stock'),
+  // PUT /api/inventory/{id}/stock — adjust stock by a positive/negative quantity
+  updateStock: (id, quantity) => api.put(`/inventory/${id}/stock`, { quantity }),
+};
 export const partnersAPI = createApiHelper('partners');
 export const stripePaymentAPI = {
     createPaymentIntent: (data) => api.post('/stripe/payment-intent', data),
     confirmPayment: (data) => api.post('/stripe/confirm', data),
 };
-export const payrollAPI = createApiHelper('payroll');
+export const payrollAPI = {
+  ...createApiHelper('payroll'),
+  // Calculate a draft (nothing saved) for the generate-preview modal
+  preview: (payload) => api.post('/payroll/preview', payload),
+  // Persist a confirmed draft's records
+  confirmSave: (records) => api.post('/payroll/confirm-save', { records }),
+  // Mark a payroll as Paid (payment date defaults to today)
+  markPaid: (id) => api.put(`/payroll/${id}/pay`, {}),
+};
 export const purchasesAPI = createApiHelper('purchases');
 export const suppliersAPI = createApiHelper('suppliers');
 export const recycleBinAPI = createApiHelper('recycle-bin');

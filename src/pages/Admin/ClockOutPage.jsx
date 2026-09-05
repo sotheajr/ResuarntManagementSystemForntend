@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Clock, Loader2, CheckCircle, AlertTriangle, LogOut } from 'lucide-react';
+import { Clock, Loader2, CheckCircle, AlertTriangle, LogOut, RotateCcw } from 'lucide-react';
 import { attendanceAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { t } from '../../translations/common';
 
 const ClockOutPage = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { language } = useLanguage();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [todayStatus, setTodayStatus] = useState(null);
@@ -14,6 +14,7 @@ const ClockOutPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [resetting, setResetting] = useState(false);
 
   // Real-time clock update every second
   useEffect(() => {
@@ -56,6 +57,21 @@ const ClockOutPage = () => {
       setError(err.response?.data?.message || t('Failed to clock out', language));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // TESTING UTILITY (Admin): clear today's record so the flow can be re-tested
+  const handleReset = async () => {
+    setResetting(true);
+    setError(null);
+    setResult(null);
+    try {
+      await attendanceAPI.resetToday();
+      await fetchTodayStatus();
+    } catch (err) {
+      setError(err.response?.data?.message || t('Failed to reset attendance', language) || 'Failed to reset attendance');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -206,6 +222,22 @@ const ClockOutPage = () => {
             ? t('✅ You have already clocked out. See you tomorrow!', language)
             : t('⏰ You need to clock in before you can clock out.', language)}
         </p>
+      )}
+
+      {/* Reset for Testing (Admin only) */}
+      {isAdmin && (canClockOut || isCompleted) && (
+        <button
+          onClick={handleReset}
+          disabled={resetting}
+          className="w-full py-2 px-4 rounded-lg text-sm font-medium border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {resetting ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <RotateCcw className="w-4 h-4" />
+          )}
+          {t('Reset for Testing', language) || 'Reset for Testing'}
+        </button>
       )}
     </div>
   );

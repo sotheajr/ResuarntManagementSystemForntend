@@ -14,6 +14,10 @@ const STATUS_COLORS = {
   Late: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   'Half Day': 'bg-orange-100 text-orange-700 border-orange-200',
   Absent: 'bg-red-100 text-red-700 border-red-200',
+  'Not Clocked In': 'bg-gray-100 text-gray-600 border-gray-200',
+};
+const KH_STATUS = {
+  'Not Clocked In': 'មិនបានចូលវត្តមាន',
 };
 
 // ==================== Searchable Employee Select Component ====================
@@ -156,6 +160,16 @@ const AttendancePage = () => {
   const [filterUserId, setFilterUserId] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+  // Daily roster mode: defaults to TODAY so every active employee (including
+  // anyone who hasn't clocked in) is visible on load. Clear it to fall back
+  // to the month history view.
+  const [filterDate, setFilterDate] = useState(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  });
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -205,9 +219,14 @@ const AttendancePage = () => {
       } else if (filterUserId) {
         params.user_id = filterUserId;
       }
-      if (filterMonth) params.month_year = filterMonth;
-      if (filterDateFrom) params.date_from = filterDateFrom;
-      if (filterDateTo) params.date_to = filterDateTo;
+      if (filterDate) {
+        // Daily roster mode: every active employee for the selected date
+        params.date = filterDate;
+      } else {
+        if (filterMonth) params.month_year = filterMonth;
+        if (filterDateFrom) params.date_from = filterDateFrom;
+        if (filterDateTo) params.date_to = filterDateTo;
+      }
       const response = await attendanceAPI.getAll(params);
       setRecords(response.data?.data || []);
     } catch (err) {
@@ -215,7 +234,7 @@ const AttendancePage = () => {
     } finally {
       setLoading(false);
     }
-  }, [filterMonth, filterUserId, filterDateFrom, filterDateTo, isAdmin, currentUserId, language]);
+  }, [filterMonth, filterUserId, filterDateFrom, filterDateTo, filterDate, isAdmin, currentUserId, language]);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -380,6 +399,11 @@ const AttendancePage = () => {
     return `${t('User', language)} #${r.User_ID || r.user_id}`;
   };
 
+  const getUserRole = (r) => {
+    const role = r.user?.role;
+    return role?.role_name || role?.Role_Name || '';
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -430,6 +454,19 @@ const AttendancePage = () => {
             />
           </div>
         )}
+        <label className="flex items-center gap-1.5 text-sm text-slate-600">
+          <span className="hidden sm:inline">{t('Daily', language) || 'Daily'}</span>
+          <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)}
+            className="px-3 py-2.5 border border-gray-300 rounded-lg text-base outline-none focus:ring-2 focus:ring-blue-500"
+            title={t('Daily roster: show every active employee for this date', language) || 'Daily roster: show every active employee for this date'} />
+          {filterDate && (
+            <button type="button" onClick={() => setFilterDate('')}
+              className="p-1 text-gray-400 hover:text-gray-600 rounded"
+              title={t('Show month history', language) || 'Show month history'}>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </label>
         <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
           className="px-3 py-2.5 border border-gray-300 rounded-lg text-base outline-none focus:ring-2 focus:ring-blue-500" />
         <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)}
@@ -477,15 +514,20 @@ const AttendancePage = () => {
               <tbody className="divide-y divide-gray-100">
                 {filteredRecords.map((r) => {
                   const attId = r.Attendance_ID || r.attendance_id;
-                  const status = r.Status || r.status || 'Present';
+                  const status = r.Status || r.status || (attId ? 'Present' : 'Not Clocked In');
 
                   return (
-                    <tr key={attId} className="hover:bg-gray-50 transition-colors">
+                    <tr key={attId ?? `user-${r.user_id || r.User_ID}`} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-gray-900 font-medium">{r.Date || r.date}</td>
                       <td className="px-4 py-3 text-gray-600">
-                        <span className="flex items-center gap-2">
+                        <span className="flex items-center gap-2 flex-wrap">
                           <User className="w-4 h-4 text-gray-400" />
                           {getUserName(r)}
+                          {getUserRole(r) && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              {language === 'kh' ? (r.user?.role?.role_name_kh || getUserRole(r)) : getUserRole(r)}
+                            </span>
+                          )}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center font-mono text-gray-700">{formatTime(r.Clock_In || r.clock_in)}</td>
@@ -494,24 +536,26 @@ const AttendancePage = () => {
                       <td className="px-4 py-3 text-center text-green-600 font-medium">+{r.OT_Hours || r.ot_hours || '0.00'}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                          {language === 'kh' ? (r.STATUS_KH || r.status_kh || status) : status}
+                          {language === 'kh' ? (r.STATUS_KH || r.status_kh || KH_STATUS[status] || status) : status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {canManage && (
-                            <button onClick={() => openEditModal(r)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title={t('Edit', language)}>
-                              <Pencil className="w-5 h-5" />
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button onClick={() => { setDeleteTarget(r); setShowDeleteConfirm(true); }}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title={t('Delete', language)}>
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
+                        {attId ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            {canManage && (
+                              <button onClick={() => openEditModal(r)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title={t('Edit', language)}>
+                                <Pencil className="w-5 h-5" />
+                              </button>
+                            )}
+                            {isAdmin && (
+                              <button onClick={() => { setDeleteTarget(r); setShowDeleteConfirm(true); }}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title={t('Delete', language)}>
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            )}
+                          </div>
+                        ) : null}
                       </td>
                     </tr>
                   );

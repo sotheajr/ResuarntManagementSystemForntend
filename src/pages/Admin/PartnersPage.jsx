@@ -85,17 +85,20 @@ const PartnersPage = () => {
   };
 
   const getImageUrl = (item) => {
+    // Prefer the backend's appended image_url accessor (APP_URL=http://localhost:8000)
+    if (item.image_url) return item.image_url;
     const rawPath = getField(item, 'IMAGE', 'image');
     if (!rawPath) return null;
-    const cleanPath = rawPath.replace(/\\/g, '/');
+    if (rawPath.startsWith('http')) return rawPath;
+    const cleanPath = rawPath.replace(/\\/g, '/').replace(/^\/?storage\//, '');
     return `${API_BASE_URL}/storage/${cleanPath}`;
   };
 
   // ==================== Filtering ====================
   const filteredPartners = partners.filter((item) => {
     const term = searchTerm.toLowerCase();
-    const name = (item.COMPANY_NAME || item.company_name || '').toLowerCase();
-    const contact = (item.CONTACT_PERSON || item.contact_person || '').toLowerCase();
+    const name = (item.partner_name || item.COMPANY_NAME || item.company_name || '').toLowerCase();
+    const contact = (item.contact_name || item.CONTACT_PERSON || item.contact_person || '').toLowerCase();
     const phone = (item.PHONE || item.phone || '');
     return name.includes(term) || contact.includes(term) || phone.includes(term);
   });
@@ -132,10 +135,10 @@ const PartnersPage = () => {
   const openEditModal = (item) => {
     setEditingItem(item);
     setFormData({
-      company_name: getField(item, 'COMPANY_NAME', 'company_name'),
-      contact_person: getField(item, 'CONTACT_PERSON', 'contact_person'),
-      phone: getField(item, 'PHONE', 'phone'),
-      address: getField(item, 'ADDRESS', 'address'),
+      company_name: getField(item, 'partner_name', 'PARTNER_NAME', 'COMPANY_NAME', 'company_name'),
+      contact_person: getField(item, 'contact_name', 'CONTACT_PERSON', 'contact_person'),
+      phone: getField(item, 'phone', 'PHONE'),
+      address: getField(item, 'address', 'ADDRESS'),
     });
     setImageFile(null);
     setImagePreview(null);
@@ -160,8 +163,9 @@ const PartnersPage = () => {
     setFormError(null);
     try {
       const formPayload = new FormData();
-      formPayload.append('company_name', formData.company_name);
-      formPayload.append('contact_person', formData.contact_person);
+      // Backend validation expects partner_name / contact_name
+      formPayload.append('partner_name', formData.company_name);
+      formPayload.append('contact_name', formData.contact_person);
       formPayload.append('phone', formData.phone);
       formPayload.append('address', formData.address);
 
@@ -170,7 +174,14 @@ const PartnersPage = () => {
       }
 
       if (editingItem) {
-        const id = getField(editingItem, 'PARTNER_ID', 'partner_id');
+        const id = getField(editingItem, 'partner_id', 'PARTNER_ID');
+        if (!id) {
+          setFormError(t('Partner ID is missing for update', language) || 'Partner ID is missing for update');
+          setFormSubmitting(false);
+          return;
+        }
+        // Method spoofing: Laravel defines PUT /partners/{id}; FormData must POST with _method=PUT
+        formPayload.append('_method', 'PUT');
         await partnersAPI.update(id, formPayload);
         showToast('success', t('Partner', language) + ' ' + t('updated successfully', language));
       } else {
@@ -196,7 +207,13 @@ const PartnersPage = () => {
     if (!deleteTarget) return;
     setDeleteSubmitting(true);
     try {
-      const id = getField(deleteTarget, 'PARTNER_ID', 'partner_id');
+      const id = getField(deleteTarget, 'partner_id', 'PARTNER_ID');
+      if (!id) {
+        showToast('error', t('Partner ID is missing for delete', language) || 'Partner ID is missing for delete');
+        setShowDeleteConfirm(false);
+        setDeleteSubmitting(false);
+        return;
+      }
       await partnersAPI.delete(id);
       showToast('success', t('Partner', language) + ' ' + t('deleted successfully', language));
       setShowDeleteConfirm(false);
@@ -310,8 +327,8 @@ const PartnersPage = () => {
               <tbody className="divide-y divide-gray-100">
                 {filteredPartners.map((item) => {
                   const id = getField(item, 'PARTNER_ID', 'partner_id');
-                  const companyName = getField(item, 'COMPANY_NAME', 'company_name');
-                  const contactPerson = getField(item, 'CONTACT_PERSON', 'contact_person');
+                  const companyName = getField(item, 'partner_name', 'PARTNER_NAME', 'COMPANY_NAME', 'company_name');
+                  const contactPerson = getField(item, 'contact_name', 'CONTACT_PERSON', 'contact_person');
                   const phone = getField(item, 'PHONE', 'phone');
                   const address = getField(item, 'ADDRESS', 'address');
                   const imageUrl = getImageUrl(item);
@@ -545,7 +562,7 @@ const PartnersPage = () => {
               <p className="text-sm text-gray-500 mb-2">
                 {t('Are you sure you want to delete this item?', language) || 'Are you sure you want to permanently delete'}{' '}
                 <span className="font-medium text-gray-700">
-                  {getField(deleteTarget, 'COMPANY_NAME', 'company_name')}
+                  {getField(deleteTarget, 'partner_name', 'PARTNER_NAME', 'COMPANY_NAME', 'company_name')}
                 </span>?
               </p>
               <p className="text-xs text-red-500">{t('This action cannot be undone.', language)}</p>

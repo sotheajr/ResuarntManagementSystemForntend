@@ -168,7 +168,14 @@ const InventoryPage = () => {
       }
 
       if (editingItem) {
-        const id = getField(editingItem, 'Inventory_ID', 'inventory_id');
+        const id = getField(editingItem, 'inventory_id', 'Inventory_ID');
+        if (!id) {
+          setFormError(t('Item ID is missing for update', language) || 'Item ID is missing for update');
+          setFormSubmitting(false);
+          return;
+        }
+        // Method spoofing: Laravel defines PUT /inventory/{id}; FormData must POST with _method=PUT
+        formPayload.append('_method', 'PUT');
         await inventoryAPI.update(id, formPayload);
         showToast('success', t('Item updated successfully!', language));
       } else {
@@ -205,7 +212,12 @@ const InventoryPage = () => {
     }
     setStockSubmitting(true);
     try {
-      const id = getField(stockTarget, 'Inventory_ID', 'inventory_id');
+      const id = getField(stockTarget, 'inventory_id', 'Inventory_ID');
+      if (!id) {
+        showToast('error', t('Item ID is missing', language) || 'Item ID is missing');
+        setStockSubmitting(false);
+        return;
+      }
       await inventoryAPI.updateStock(id, qty);
       showToast('success', `${t('Stock adjusted by', language)} ${qty >= 0 ? '+' : ''}${qty}`);
       closeStockModal();

@@ -37,7 +37,7 @@ const CustomersPage = () => {
     phone: '',
     email: '',
     address: '',
-    image: null,
+    profile_image: null,
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -76,7 +76,10 @@ const CustomersPage = () => {
 
   // ==================== Image Helpers ====================
   const getImageUrl = (customer) => {
-    const img = customer.image || customer.Image;
+    // Use the appended profile_image_url accessor from the backend if available
+    if (customer.profile_image_url) return customer.profile_image_url;
+    // Fallback: construct URL manually from profile_image path
+    const img = customer.profile_image || customer.image || customer.Image;
     if (!img) return null;
     if (img.startsWith('http')) return img;
     const cleanPath = img.replace(/^\/?storage\//, '');
@@ -85,7 +88,7 @@ const CustomersPage = () => {
 
   // ==================== Form Helpers (Admin only) ====================
   const resetForm = () => {
-    setFormData({ customer_name: '', phone: '', email: '', address: '', image: null });
+    setFormData({ customer_name: '', phone: '', email: '', address: '', profile_image: null });
     setFormErrors({});
     setImagePreview(null);
     setEditingCustomer(null);
@@ -105,9 +108,9 @@ const CustomersPage = () => {
       phone: customer.phone || customer.Phone || '',
       email: customer.email || customer.Email || '',
       address: customer.address || customer.Address || '',
-      image: null,
+      profile_image: null,
     });
-    const img = customer.image || customer.Image;
+    const img = customer.profile_image || customer.image || customer.Image;
     if (img) {
       const cleanPath = img.startsWith('http') ? img : `${API_BASE_URL}/storage/${img.replace(/^\/?storage\//, '')}`;
       setImagePreview(cleanPath);
@@ -134,7 +137,7 @@ const CustomersPage = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData((prev) => ({ ...prev, image: file }));
+      setFormData((prev) => ({ ...prev, profile_image: file }));
       const reader = new FileReader();
       reader.onload = (event) => setImagePreview(event.target.result);
       reader.readAsDataURL(file);
@@ -142,7 +145,7 @@ const CustomersPage = () => {
   };
 
   const removeImage = () => {
-    setFormData((prev) => ({ ...prev, image: null }));
+    setFormData((prev) => ({ ...prev, profile_image: null }));
     setImagePreview(null);
   };
 
@@ -162,13 +165,18 @@ const CustomersPage = () => {
       if (formData.phone) payload.append('phone', formData.phone);
       if (formData.email) payload.append('email', formData.email);
       if (formData.address) payload.append('address', formData.address);
-      if (formData.image) payload.append('image', formData.image);
+      if (formData.profile_image) payload.append('profile_image', formData.profile_image);
 
       if (modalMode === 'create') {
         await customersAPI.create(payload);
       } else {
         payload.append('_method', 'PUT');
-        const customerId = editingCustomer.customer_id || editingCustomer.Customer_ID;
+        const customerId = editingCustomer.id || editingCustomer.customer_id || editingCustomer.Customer_ID;
+        if (!customerId) {
+          setFormErrors({ general: t('Customer ID is missing for update', language) || 'Customer ID is missing for update' });
+          setSubmitting(false);
+          return;
+        }
         await customersAPI.update(customerId, payload);
       }
       closeModal();
@@ -201,7 +209,11 @@ const CustomersPage = () => {
     setSubmitting(true);
     setDeleteError(null);
     try {
-      const customerId = deleteTarget.customer_id || deleteTarget.Customer_ID;
+      const customerId = deleteTarget.id || deleteTarget.customer_id || deleteTarget.Customer_ID;
+      if (!customerId) {
+        setDeleteError(t('Customer ID is missing for delete', language) || 'Customer ID is missing for delete');
+        return;
+      }
       await customersAPI.delete(customerId);
       setShowDeleteConfirm(false);
       setDeleteTarget(null);
@@ -235,7 +247,7 @@ const CustomersPage = () => {
     return '';
   };
 
-  const getCustomerId = (customer) => customer.customer_id || customer.Customer_ID;
+  const getCustomerId = (customer) => customer.id || customer.customer_id || customer.Customer_ID;
   const getCustomerName = (customer) => customer.customer_name || customer.Customer_Name;
   const getPhone = (customer) => customer.phone || customer.Phone;
   const getEmail = (customer) => customer.email || customer.Email;

@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { t } from '../../translations/common';
-import { rolesAPI } from '../../services/api';
 import {
   Loader2,
   AlertCircle,
-  Search,
   X,
   Trash2,
   Shield,
@@ -18,31 +16,115 @@ import {
   Lock,
 } from 'lucide-react';
 
-import { useState, useEffect } from 'react';
-import { useLanguage } from '../../context/LanguageContext';
-import { t } from '../../translations/common';
-import { getRolesWithPermissions, updateRolePermissions, createRole, updateRole, deleteRole } from '../../services/roleService';
-import { Loader2, AlertCircle, X, Trash2, Shield, ShieldCheck, Plus, Save, Pencil, CheckCircle2, Lock } from 'lucide-react';
+import * as rolesAPI from '../../services/roleService';
 
-const PERMISSION_GROUPS = [
-  { name: 'Users', table: 'users', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Roles', table: 'roles', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Categories', table: 'categories', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Sub Categories', table: 'sub_categories', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Menu', table: 'menu', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Tables', table: 'tables', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Customers', table: 'customers', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Orders', table: 'orders', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Payments', table: 'payments', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Reservations', table: 'reservations', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Reports', table: 'reports', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Inventory', table: 'inventory', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Suppliers', table: 'suppliers', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Purchases', table: 'purchases', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Partners', table: 'partners', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Attendances', table: 'attendances', actions: ['view', 'create', 'update', 'delete'] },
-  { name: 'Special Actions', table: 'special', permissions: ['seat_guest', 'print_receipt', 'manage_permissions'] },
+// Module definition matrix with unique granular permissions (e.g., view_users, create_users, etc.)
+const MODULES = [
+  { id: 'users', label: 'Users', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'roles', label: 'Roles', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'categories', label: 'Categories', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'sub_categories', label: 'Sub Categories', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'menu', label: 'Menu', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'tables', label: 'Tables', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'customers', label: 'Customers', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'orders', label: 'Orders', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'payments', label: 'Payments', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'reservations', label: 'Reservations', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'reports', label: 'Reports', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'inventory', label: 'Inventory', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'suppliers', label: 'Suppliers', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'purchases', label: 'Purchases', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'partners', label: 'Partners', actions: ['view', 'create', 'update', 'delete'] },
+  { id: 'attendances', label: 'Attendances', actions: ['view', 'create', 'update', 'delete'] },
 ];
+
+const SPECIAL_ACTIONS = ['seat_guest', 'print_receipt', 'manage_permissions'];
+
+// Generate PERMISSION_GROUPS from MODULES + Special Actions
+const PERMISSION_GROUPS = MODULES.map((m) => ({
+  name: m.label,
+  table: m.id,
+  actions: m.actions,
+  permissions: m.actions.map((act) => `${act}_${m.id}`),
+})).concat([
+  {
+    name: 'Special Actions',
+    table: 'special',
+    actions: SPECIAL_ACTIONS,
+    permissions: SPECIAL_ACTIONS,
+  },
+]);
+
+const PERMISSION_LABELS = {
+  view_users: 'View Users',
+  create_users: 'Create Users',
+  update_users: 'Update Users',
+  delete_users: 'Delete Users',
+  view_roles: 'View Roles',
+  create_roles: 'Create Roles',
+  update_roles: 'Update Roles',
+  delete_roles: 'Delete Roles',
+  view_categories: 'View Categories',
+  create_categories: 'Create Categories',
+  update_categories: 'Update Categories',
+  delete_categories: 'Delete Categories',
+  view_sub_categories: 'View Sub Categories',
+  create_sub_categories: 'Create Sub Categories',
+  update_sub_categories: 'Update Sub Categories',
+  delete_sub_categories: 'Delete Sub Categories',
+  view_menu: 'View Menu',
+  create_menu: 'Create Menu',
+  update_menu: 'Update Menu',
+  delete_menu: 'Delete Menu',
+  view_tables: 'View Tables',
+  create_tables: 'Create Tables',
+  update_tables: 'Update Tables',
+  delete_tables: 'Delete Tables',
+  view_customers: 'View Customers',
+  create_customers: 'Create Customers',
+  update_customers: 'Update Customers',
+  delete_customers: 'Delete Customers',
+  view_orders: 'View Orders',
+  create_orders: 'Create Orders',
+  update_orders: 'Update Orders',
+  delete_orders: 'Delete Orders',
+  view_payments: 'View Payments',
+  create_payments: 'Create Payments',
+  update_payments: 'Update Payments',
+  delete_payments: 'Delete Payments',
+  view_reservations: 'View Reservations',
+  create_reservations: 'Create Reservations',
+  update_reservations: 'Update Reservations',
+  delete_reservations: 'Delete Reservations',
+  view_reports: 'View Reports',
+  create_reports: 'Create Reports',
+  update_reports: 'Update Reports',
+  delete_reports: 'Delete Reports',
+  view_inventory: 'View Inventory',
+  create_inventory: 'Create Inventory',
+  update_inventory: 'Update Inventory',
+  delete_inventory: 'Delete Inventory',
+  view_suppliers: 'View Suppliers',
+  create_suppliers: 'Create Suppliers',
+  update_suppliers: 'Update Suppliers',
+  delete_suppliers: 'Delete Suppliers',
+  view_purchases: 'View Purchases',
+  create_purchases: 'Create Purchases',
+  update_purchases: 'Update Purchases',
+  delete_purchases: 'Delete Purchases',
+  view_partners: 'View Partners',
+  create_partners: 'Create Partners',
+  update_partners: 'Update Partners',
+  delete_partners: 'Delete Partners',
+  view_attendances: 'View Attendances',
+  create_attendances: 'Create Attendances',
+  update_attendances: 'Update Attendances',
+  delete_attendances: 'Delete Attendances',
+  seat_guest: 'Seat Guest',
+  print_receipt: 'Print Receipt',
+  manage_permissions: 'Manage Permissions',
+};
+
 
 
 const RolesManagement = () => {
@@ -89,7 +171,7 @@ const RolesManagement = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await rolesAPI.getAll();
+      const response = await rolesAPI.getRolesWithPermissions();
       const roleData = response.data?.data?.data || response.data?.data || response.data || [];
       const rolesList = Array.isArray(roleData) ? roleData : [];
       setRoles(rolesList);
@@ -149,6 +231,7 @@ const RolesManagement = () => {
   // Uses toBoolean() to correctly handle Oracle "0"/"1" strings.
   // ============================================================
   const buildPermissionsState = (role) => {
+    const isSuperAdmin = (role.role_id === 1 || role.id === 1 || role.role_name === 'Admin');
     const state = {};
     const perms = role.permissions || [];
 
@@ -158,11 +241,12 @@ const RolesManagement = () => {
 
     // Set each permission's access state by matching permission_name
     allPerms.forEach((permName) => {
-      // Oracle with yajra/oci8 returns lowercase column names: permission_name, can_access
-      // But also handle uppercase PERMISSION_NAME, CAN_ACCESS just in case
-      const found = findPermissionByName(perms, permName);
-      // CRITICAL: Use toBoolean() to correctly convert Oracle "0"/"1" strings
-      state[permName] = found ? toBoolean(found.can_access ?? found.CAN_ACCESS) : false;
+      if (isSuperAdmin) {
+        state[permName] = true;
+      } else {
+        const found = findPermissionByName(perms, permName);
+        state[permName] = found ? toBoolean(found.can_access ?? found.CAN_ACCESS) : false;
+      }
     });
 
     setPermissionsState(state);
@@ -177,6 +261,9 @@ const RolesManagement = () => {
 
   // Toggle a single permission
   const handleTogglePermission = (permName) => {
+    if (selectedRole && (selectedRole.role_id === 1 || selectedRole.id === 1 || selectedRole.role_name === 'Admin')) {
+      return;
+    }
     setPermissionsState((prev) => {
       const updated = { ...prev, [permName]: !prev[permName] };
       return updated;
@@ -186,6 +273,9 @@ const RolesManagement = () => {
 
   // Toggle all permissions in a group
   const handleToggleGroup = (groupPerms, enable) => {
+    if (selectedRole && (selectedRole.role_id === 1 || selectedRole.id === 1 || selectedRole.role_name === 'Admin')) {
+      return;
+    }
     setPermissionsState((prev) => {
       const updated = { ...prev };
       groupPerms.forEach((p) => {
@@ -214,7 +304,7 @@ const RolesManagement = () => {
       }));
 
       const roleId = selectedRole.role_id || selectedRole.id;
-      await rolesAPI.updatePermissions(roleId, payload);
+      await rolesAPI.updateRolePermissions(roleId, payload);
 
       // Immediately clear unsaved-changes flag on success
       setPermissionsChanged(false);
@@ -246,7 +336,7 @@ const RolesManagement = () => {
 
       // Background-refresh roles list (for role names, etc.) but preserve our exact permissions
       try {
-        const response = await rolesAPI.getAll();
+        const response = await rolesAPI.getRolesWithPermissions();
         const refreshedData = response.data?.data?.data || response.data?.data || response.data || [];
         const refreshedList = Array.isArray(refreshedData) ? refreshedData : [];
         setRoles(refreshedList);
@@ -276,7 +366,7 @@ const RolesManagement = () => {
     }
     setCreateSubmitting(true);
     try {
-      await rolesAPI.create({ role_name: newRoleName.trim() });
+      await rolesAPI.createRole({ role_name: newRoleName.trim() });
       setNewRoleName('');
       setShowCreateModal(false);
       setSuccessMessage(`${t('Role created successfully!', language)}`);
@@ -309,7 +399,7 @@ const RolesManagement = () => {
     setEditSubmitting(true);
     try {
       const roleId = editingRole.role_id || editingRole.id;
-      await rolesAPI.update(roleId, { role_name: editRoleName.trim() });
+      await rolesAPI.updateRole(roleId, { role_name: editRoleName.trim() });
       setShowEditModal(false);
       setEditingRole(null);
       setSuccessMessage(`${t('Role renamed to', language)} "${editRoleName.trim()}" ${t('successfully', language)}`);
@@ -334,7 +424,7 @@ const RolesManagement = () => {
     }
     try {
       const roleId = role.role_id || role.id;
-      await rolesAPI.delete(roleId);
+      await rolesAPI.deleteRole(roleId);
       setSuccessMessage(`${t('Role deleted successfully!', language)}`);
       if (selectedRole && (selectedRole.role_id || selectedRole.id) === roleId) {
         setSelectedRole(null);
@@ -520,14 +610,6 @@ const RolesManagement = () => {
                 {t('Click on a role from the left panel to view and configure its permissions.', language)}
               </p>
             </div>
-          ) : selectedRole.role_id === 1 || selectedRole.id === 1 ? (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full min-h-[400px] flex flex-col items-center justify-center text-center px-6">
-              <Lock className="w-16 h-16 text-amber-200 mb-4" />
-              <h3 className="text-lg font-medium text-gray-800 mb-1">{t('Admin Role Locked', language)}</h3>
-              <p className="text-sm text-gray-500 max-w-sm">
-                {t('The Admin role has full access to all system features and cannot be modified.', language)}
-              </p>
-            </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               {/* Header */}
@@ -537,22 +619,33 @@ const RolesManagement = () => {
                     {t('Permissions for', language)} <span className="text-blue-600">{selectedRole.role_name}</span>
                   </h2>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {t('Toggle checkboxes to grant or revoke permissions', language)}
+                    {selectedRole.role_id === 1 || selectedRole.id === 1 || selectedRole.role_name === 'Admin'
+                      ? t('Admin Role has full system permissions (Protected / Read-Only)', language)
+                      : t('Toggle checkboxes to grant or revoke permissions', language)}
                   </p>
                 </div>
-                {permissionsChanged && (
+                {permissionsChanged && !(selectedRole.role_id === 1 || selectedRole.id === 1 || selectedRole.role_name === 'Admin') && (
                   <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full font-medium">
                     {t('Unsaved changes', language)}
                   </span>
                 )}
               </div>
 
+              {/* Admin Info Banner */}
+              {(selectedRole.role_id === 1 || selectedRole.id === 1 || selectedRole.role_name === 'Admin') && (
+                <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2.5 text-amber-800 text-sm">
+                  <Lock className="w-4 h-4 flex-shrink-0 text-amber-600" />
+                  <span>{t('🔒 Admin Role has full system permissions (Protected / Read-Only)', language)}</span>
+                </div>
+              )}
+
               {/* Permissions Grid */}
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {PERMISSION_GROUPS.map((group) => {
-                    const allEnabled = group.permissions.every((p) => permissionsState[p]);
-                    const someEnabled = group.permissions.some((p) => permissionsState[p]);
+                    const isAdmin = selectedRole.role_id === 1 || selectedRole.id === 1 || selectedRole.role_name === 'Admin';
+                    const allEnabled = group.permissions.every((p) => isAdmin || permissionsState[p]);
+                    const someEnabled = group.permissions.some((p) => isAdmin || permissionsState[p]);
 
                     return (
                       <div
@@ -561,8 +654,10 @@ const RolesManagement = () => {
                       >
                         {/* Group Header */}
                         <div
-                          className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-                          onClick={() => handleToggleGroup(group.permissions, !allEnabled)}
+                          className={`flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200 transition-colors ${
+                            isAdmin ? 'cursor-default' : 'cursor-pointer hover:bg-gray-100'
+                          }`}
+                          onClick={() => !isAdmin && handleToggleGroup(group.permissions, !allEnabled)}
                         >
                           <span className="text-sm font-semibold text-gray-700">
                             {t(group.name, language)}
@@ -585,16 +680,19 @@ const RolesManagement = () => {
                           {group.permissions.map((permName) => (
                             <label
                               key={permName}
-                              className="flex items-center gap-3 py-1.5 cursor-pointer group rounded-lg hover:bg-gray-50 px-2 -mx-2 transition-colors"
+                              className={`flex items-center gap-3 py-1.5 rounded-lg px-2 -mx-2 transition-colors ${
+                                isAdmin ? 'cursor-not-allowed opacity-90' : 'cursor-pointer group hover:bg-gray-50'
+                              }`}
                             >
                               <input
                                 type="checkbox"
-                                checked={permissionsState[permName] || false}
-                                onChange={() => handleTogglePermission(permName)}
-                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                checked={isAdmin ? true : (permissionsState[permName] || false)}
+                                disabled={isAdmin}
+                                onChange={() => !isAdmin && handleTogglePermission(permName)}
+                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                               />
-                              <span className="text-sm text-gray-700 group-hover:text-gray-900">
-                                {t(PERMISSION_LABELS[permName] || permName, language)}
+                              <span className={`text-sm text-gray-700 ${!isAdmin ? 'group-hover:text-gray-900' : ''}`}>
+                                {t(PERMISSION_LABELS[permName] || permName.replace(/_/g, ' '), language)}
                               </span>
                             </label>
                           ))}
@@ -608,25 +706,29 @@ const RolesManagement = () => {
               {/* Save Button */}
               <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
                 <p className="text-xs text-gray-400">
-                  {t('Click group headers to toggle all permissions in that group', language)}
+                  {selectedRole.role_id === 1 || selectedRole.id === 1 || selectedRole.role_name === 'Admin'
+                    ? t('Super Admin permissions are permanently active and cannot be modified.', language)
+                    : t('Click group headers to toggle all permissions in that group', language)}
                 </p>
-                <button
-                  onClick={handleSavePermissions}
-                  disabled={!permissionsChanged || savingPermissions}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                >
-                  {savingPermissions ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {t('Saving', language)}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      {t('Save Permissions', language)}
-                    </>
-                  )}
-                </button>
+                {!(selectedRole.role_id === 1 || selectedRole.id === 1 || selectedRole.role_name === 'Admin') && (
+                  <button
+                    onClick={handleSavePermissions}
+                    disabled={!permissionsChanged || savingPermissions}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  >
+                    {savingPermissions ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {t('Saving', language)}
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        {t('Save Permissions', language)}
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           )}

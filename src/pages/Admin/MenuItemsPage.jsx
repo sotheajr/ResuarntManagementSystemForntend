@@ -280,7 +280,12 @@ const MenuItemsPage = () => {
         await menuAPI.create(payload);
       } else {
         payload.append('_method', 'PUT');
-        const itemId = editingItem.menu_id || editingItem.Menu_ID;
+        const itemId = editingItem.id || editingItem.menu_id || editingItem.Menu_ID;
+        if (!itemId) {
+          setFormErrors({ general: t('Item ID is missing for update', language) });
+          setSubmitting(false);
+          return;
+        }
         await menuAPI.update(itemId, payload);
       }
 
@@ -312,7 +317,12 @@ const MenuItemsPage = () => {
     if (!deleteTarget) return;
     setSubmitting(true);
     try {
-      const itemId = deleteTarget.menu_id || deleteTarget.Menu_ID;
+      const itemId = deleteTarget.id || deleteTarget.menu_id || deleteTarget.Menu_ID;
+      if (!itemId) {
+        setError(t('Item ID is missing for delete', language));
+        setShowDeleteConfirm(false);
+        return;
+      }
       await menuAPI.delete(itemId);
       setShowDeleteConfirm(false);
       setDeleteTarget(null);
@@ -696,7 +706,7 @@ const MenuItemsPage = () => {
                 >
                   <option value="">{t('Select a category', language)}</option>
                   {categories.map((cat) => (
-                    <option key={cat.category_id || cat.Category_ID} value={cat.category_id || cat.Category_ID}>
+                    <option key={cat.id || cat.category_id || cat.Category_ID} value={cat.id || cat.category_id || cat.Category_ID}>
                       {cat.category_name || cat.Category_Name}
                     </option>
                   ))}

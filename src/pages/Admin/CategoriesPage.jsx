@@ -80,16 +80,24 @@ const CategoriesPage = () => {
   const openSubDrawer = async (category) => {
     setSubDrawerCategory(category);
     setSubDrawerOpen(true);
+
+    // Check if sub-categories are already eager-loaded on the category object
+    // The index() API returns categories with 'sub_categories' (snake_case) relationship
+    const existingSubs = category.sub_categories || category.subCategories || [];
+    if (existingSubs.length > 0) {
+      setSubCategories(existingSubs);
+      return;
+    }
+
+    // Otherwise fetch from the dedicated API endpoint
     setSubLoading(true);
     try {
-      const catId = category.category_id || category.Category_ID;
-      console.log("Fetching sub-categories for ID:", catId);
+      // Category PK is 'id' (from $table->id()), support legacy field names too
+      const catId = category.id || category.category_id || category.Category_ID;
       const response = await categoriesAPI.getSubCategories(catId);
-      console.log("Sub-categories API Response:", response.data);
-      // Normalize: handle both response.data.data (paginated wrapper) and direct array
+      // Normalize: handle both response.data.data (API wrapper) and direct array
       const rawData = response.data?.data ?? response.data ?? [];
       const normalized = Array.isArray(rawData) ? rawData : [];
-      console.log("Normalized sub-categories array:", normalized);
       setSubCategories(normalized);
     } catch (err) {
       console.error("Failed to fetch sub-categories:", err);
@@ -214,7 +222,7 @@ const CategoriesPage = () => {
         payload.append('description', formData.description || '');
         if (formData.image) payload.append('image', formData.image);
         payload.append('_method', 'PUT');
-        const catId = editingCategory.category_id || editingCategory.Category_ID;
+        const catId = editingCategory.id || editingCategory.category_id || editingCategory.Category_ID;
         await categoriesAPI.update(catId, payload);
       }
       closeModal();
@@ -245,7 +253,7 @@ const CategoriesPage = () => {
     if (!deleteTarget) return;
     setSubmitting(true);
     try {
-      const catId = deleteTarget.category_id || deleteTarget.Category_ID;
+      const catId = deleteTarget.id || deleteTarget.category_id || deleteTarget.Category_ID;
       await categoriesAPI.delete(catId);
       setShowDeleteConfirm(false);
       setDeleteTarget(null);
@@ -260,6 +268,9 @@ const CategoriesPage = () => {
 
   // ==================== Helpers ====================
   const getImageUrl = (category) => {
+    // Use the appended image_url accessor from the backend if available
+    if (category.image_url) return category.image_url;
+    // Fallback: construct URL manually from image path
     const img = category.image || category.Image;
     if (!img) return null;
     if (img.startsWith('http')) return img;
@@ -463,13 +474,13 @@ const CategoriesPage = () => {
                         src={imgUrl}
                         alt={subDrawerCategory.category_name || subDrawerCategory.Category_Name}
                         className="w-full h-full object-cover"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }}
                       />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                        <FolderTree className="w-10 h-10 text-white" />
-                      </div>
-                    );
+                    ) : null;
                   })()}
+                  <div className={`w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 items-center justify-center ${getImageUrl(subDrawerCategory) ? 'hidden' : 'flex'}`}>
+                    <FolderTree className="w-10 h-10 text-white" />
+                  </div>
                 </div>
 
                 {/* Category Name */}
@@ -479,7 +490,7 @@ const CategoriesPage = () => {
 
                 {/* Category ID */}
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 mb-3">
-                  ID: {subDrawerCategory.category_id || subDrawerCategory.Category_ID}
+                  ID: {subDrawerCategory.id || subDrawerCategory.category_id || subDrawerCategory.Category_ID}
                 </span>
 
                 {/* Category Description */}

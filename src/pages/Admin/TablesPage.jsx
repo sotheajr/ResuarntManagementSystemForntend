@@ -175,7 +175,12 @@ const TablesPage = () => {
         await tablesAPI.create(payload);
       } else {
         payload.append('_method', 'PUT');
-        const tableId = editingTable.table_id || editingTable.Table_ID;
+        const tableId = editingTable.id || editingTable.table_id || editingTable.Table_ID;
+        if (!tableId) {
+          setFormErrors({ general: t('Table ID is missing for update', language) || 'Table ID is missing for update' });
+          setSubmitting(false);
+          return;
+        }
         await tablesAPI.update(tableId, payload);
       }
       closeModal();
@@ -208,7 +213,11 @@ const TablesPage = () => {
     setSubmitting(true);
     setDeleteError(null);
     try {
-      const tableId = deleteTarget.table_id || deleteTarget.Table_ID;
+      const tableId = deleteTarget.id || deleteTarget.table_id || deleteTarget.Table_ID;
+      if (!tableId) {
+        setDeleteError(t('Table ID is missing for delete', language) || 'Table ID is missing for delete');
+        return;
+      }
       await tablesAPI.delete(tableId);
       setShowDeleteConfirm(false);
       setDeleteTarget(null);

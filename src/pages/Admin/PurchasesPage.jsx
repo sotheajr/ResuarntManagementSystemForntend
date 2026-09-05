@@ -63,7 +63,8 @@ const PurchasesPage = () => {
       const [purchasesRes, suppliersRes, partnersRes] = await Promise.all([
         purchasesAPI.getAll(),
         suppliersAPI.getAll(),
-        partnersAPI.getAll(),
+        // Partners module has no backend yet — degrade gracefully instead of failing the whole load
+        partnersAPI.getAll().catch(() => ({ data: { data: [] } })),
       ]);
       setPurchases(purchasesRes.data?.data || []);
       setSuppliers(suppliersRes.data?.data || []);

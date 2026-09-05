@@ -93,14 +93,15 @@ const PayrollPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await payrollAPI.getAll();
+      // Filter the list by the selected month (backend supports month_year)
+      const response = await payrollAPI.getAll(monthYear ? { month_year: monthYear } : {});
       setPayrolls(response.data?.data || []);
     } catch (err) {
       setError(err.response?.data?.message || t('Failed to load payroll records', language));
     } finally {
       setLoading(false);
     }
-  }, [language]);
+  }, [language, monthYear]);
 
   useEffect(() => {
     fetchPayrolls();
@@ -279,11 +280,22 @@ const PayrollPage = () => {
             {t('Automated salary calculation with OT, bonuses, and deductions', language)}
           </p>
         </div>
-        <button onClick={() => setShowGenerateModal(true)}
-          className="btn-primary inline-flex items-center gap-2 px-4 py-2.5">
-          <Plus className="w-4 h-4" />
-          {t('Generate Payroll', language)}
-        </button>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-sm text-slate-600">
+            <Calendar className="w-4 h-4 text-gray-400" />
+            <input
+              type="month"
+              value={monthYear}
+              onChange={(e) => setMonthYear(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-base outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </label>
+          <button onClick={() => setShowGenerateModal(true)}
+            className="btn-primary inline-flex items-center gap-2 px-4 py-2.5 whitespace-nowrap">
+            <Plus className="w-4 h-4" />
+            {t('Generate Payroll', language)}
+          </button>
+        </div>
       </div>
 
       {/* Toast */}
@@ -355,7 +367,7 @@ const PayrollPage = () => {
               <tbody className="divide-y divide-gray-100">
                 {filteredPayrolls.map((p) => {
                   const netSalary = (parseFloat(p.Base_Salary || 0) + parseFloat(p.Overtime_Pay || 0) + parseFloat(p.Bonuses_Tips || 0)) - parseFloat(p.Deductions || 0);
-                  const status = p.Status || 'Pending';
+                  const status = p.Payment_Status || p.payment_status || 'Pending';
                   const isPending = status === 'Pending';
                   const totalOtHours = parseFloat(p.Total_OT_Hours || 0).toFixed(2);
 
