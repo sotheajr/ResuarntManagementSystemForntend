@@ -136,8 +136,24 @@ const InventoryPage = () => {
       Minimum_Stock: getField(item, 'Minimum_Stock', 'minimum_stock'),
     });
     setImageFile(null);
-    setImagePreview(null);
     setFormError(null);
+    
+    // Set image preview from existing item
+    const existingImageUrl = getField(item, 'image_url', 'IMAGE_URL') 
+      || getField(item, 'image', 'IMAGE') 
+      || getField(item, 'photo', 'PHOTO');
+    
+    if (existingImageUrl) {
+      // If it's already an absolute URL, use it directly
+      // Otherwise, prepend the API base URL
+      const previewUrl = existingImageUrl.startsWith('http://') || existingImageUrl.startsWith('https://')
+        ? existingImageUrl
+        : `${API_BASE_URL}/storage/${existingImageUrl.replace(/^\//, '')}`;
+      setImagePreview(previewUrl);
+    } else {
+      setImagePreview(null);
+    }
+    
     setShowModal(true);
   };
 
@@ -399,8 +415,19 @@ const InventoryPage = () => {
                   const isLow = qty <= min;
 
                   const rawImageUrl = getField(item, 'IMAGE_URL', 'image_url');
-                  const imageUrl = rawImageUrl
-                    ? `${API_BASE_URL}/storage/${rawImageUrl.replace(/\\/g, '/')}`
+                  const rawImage = getField(item, 'IMAGE', 'image');
+                  const rawPhoto = getField(item, 'PHOTO', 'photo');
+                  
+                  // Get the image URL, checking multiple possible field names
+                  const imagePath = rawImageUrl || rawImage || rawPhoto;
+                  
+                  // Build the final image URL
+                  // If it's already an absolute URL (e.g., Cloudinary), use it directly
+                  // Otherwise, prepend the API base URL for local storage
+                  const imageUrl = imagePath
+                    ? (imagePath.startsWith('http://') || imagePath.startsWith('https://')
+                      ? imagePath
+                      : `${API_BASE_URL}/storage/${imagePath.replace(/^\//, '')}`)
                     : null;
 
                   return (
