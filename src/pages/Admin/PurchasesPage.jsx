@@ -97,14 +97,14 @@ const PurchasesPage = () => {
 
   function getPartnerName(item) {
     if (item.partner) {
-      return item.partner.COMPANY_NAME || item.partner.company_name || '—';
+      return item.partner.partner_name || item.partner.PARTNER_NAME || item.partner.company_name || item.partner.COMPANY_NAME || '—';
     }
-    const partnerId = item.PARTNER_ID || item.partner_id;
+    const partnerId = item.partner_id || item.PARTNER_ID;
     if (partnerId) {
       const partner = partners.find(
-        (p) => Number(p.PARTNER_ID || p.partner_id) === Number(partnerId)
+        (p) => Number(p.partner_id || p.PARTNER_ID) === Number(partnerId)
       );
-      if (partner) return partner.COMPANY_NAME || partner.company_name || '—';
+      if (partner) return partner.partner_name || partner.PARTNER_NAME || partner.company_name || partner.COMPANY_NAME || '—';
     }
     return '—';
   }
@@ -410,8 +410,8 @@ const PurchasesPage = () => {
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                   <option value="">{t('-- Select Company --', language) || '-- Select Company --'}</option>
                   {partners.map((p) => (
-                    <option key={p.PARTNER_ID || p.partner_id} value={p.PARTNER_ID || p.partner_id}>
-                      {p.COMPANY_NAME || p.company_name}
+                    <option key={p.partner_id || p.PARTNER_ID} value={p.partner_id || p.PARTNER_ID}>
+                      {p.partner_name || p.PARTNER_NAME || p.company_name || p.COMPANY_NAME}
                     </option>
                   ))}
                 </select>
