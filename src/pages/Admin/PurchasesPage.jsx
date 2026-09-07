@@ -179,7 +179,7 @@ const PurchasesPage = () => {
       formPayload.append('purchase_date', formData.purchase_date);
       formPayload.append('total', formData.total);
       if (formData.partner_id) formPayload.append('partner_id', formData.partner_id);
-      if (receiptFile) formPayload.append('receipt_image', receiptFile);
+      if (receiptFile) formPayload.append('invoice_attachment', receiptFile);
 
       if (editingItem) {
         const id = getField(editingItem, 'Purchase_ID', 'purchase_id');
@@ -238,7 +238,7 @@ const PurchasesPage = () => {
 
   const getReceiptImageUrl = (item) => {
     // Check multiple possible field names for the attachment
-    const rawPath = getField(item, 'invoice_attachment', 'INVOICE_ATTACHMENT', 'receipt_image', 'RECEIPT_IMAGE', 'attachment', 'ATTACHMENT');
+    const rawPath = getField(item, 'invoice_attachment', 'INVOICE_ATTACHMENT', 'image', 'IMAGE', 'receipt_image', 'RECEIPT_IMAGE', 'attachment', 'ATTACHMENT');
     if (!rawPath) return null;
     
     // If it's already an absolute URL (e.g., Cloudinary), return it directly
