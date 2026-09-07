@@ -237,9 +237,17 @@ const PurchasesPage = () => {
   };
 
   const getReceiptImageUrl = (item) => {
-    const rawPath = getField(item, 'RECEIPT_IMAGE', 'receipt_image');
+    // Check multiple possible field names for the attachment
+    const rawPath = getField(item, 'invoice_attachment', 'INVOICE_ATTACHMENT', 'receipt_image', 'RECEIPT_IMAGE', 'attachment', 'ATTACHMENT');
     if (!rawPath) return null;
-    const cleanPath = rawPath.replace(/\\/g, '/');
+    
+    // If it's already an absolute URL (e.g., Cloudinary), return it directly
+    if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) {
+      return rawPath;
+    }
+    
+    // Otherwise, it's a local storage path - prepend the API base URL
+    const cleanPath = rawPath.replace(/\\/g, '/').replace(/^\//, '');
     return `${API_BASE_URL}/storage/${cleanPath}`;
   };
 
