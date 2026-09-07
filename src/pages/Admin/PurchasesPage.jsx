@@ -183,6 +183,8 @@ const PurchasesPage = () => {
 
       if (editingItem) {
         const id = getField(editingItem, 'Purchase_ID', 'purchase_id');
+        // Use POST with _method=PUT for file uploads (Laravel method spoofing)
+        formPayload.append('_method', 'PUT');
         await purchasesAPI.update(id, formPayload);
         showToast('success', t('Purchase', language) + ' ' + t('updated successfully', language));
       } else {
