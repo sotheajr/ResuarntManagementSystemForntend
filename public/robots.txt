@@ -4,5 +4,17 @@ Disallow: /admin
 Disallow: /waiter
 Disallow: /cashier
 Disallow: /qr-display
+Disallow: /api
+Disallow: /login
+Disallow: /register
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /settings
 
-Sitemap: https://restaurant.example.com/sitemap.xml
+# Allow public customer routes
+Allow: /menu
+Allow: /contact
+Allow: /reservations
+Allow: /about
+
+Sitemap: https://chbsyrt.com/sitemap.xml
