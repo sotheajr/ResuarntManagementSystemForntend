@@ -20,9 +20,10 @@ const PAYMENT_METHODS = [
 ];
 
 const ProcessPayment = () => {
-  const { user } = useAuth();
+  const { user, isAdmin, isCashier } = useAuth();
   const { language } = useLanguage();
   const navigate = useNavigate();
+  const rolePrefix = isAdmin ? '/admin' : isCashier ? '/cashier' : '/waiter';
   const [searchParams] = useSearchParams();
   const orderIdParam = searchParams.get('orderId');
 
@@ -225,7 +226,7 @@ const ProcessPayment = () => {
         console.warn('Order status sync failed:', statusErr.response?.data?.message || statusErr.message);
       }
       showToast('success', `Payment of $${orderTotal.toFixed(2)} ${t('paid via', language)} ${paymentMethod}!`);
-      navigate(`/admin/payments/success?orderId=${orderId}`);
+      navigate(`${rolePrefix}/payments/success?orderId=${orderId}`);
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || t('Failed to process payment', language);
       if (msg.toLowerCase().includes('already paid')) {
@@ -293,7 +294,7 @@ const ProcessPayment = () => {
         // paid / approved → money arrived; stop polling and redirect cleanly.
         if (data.is_paid || status === 'paid' || status === 'approved') {
           setKhqrStatus('paid');
-          navigate(`/admin/payments/success?orderId=${order?.id}`, { replace: true });
+          navigate(`${rolePrefix}/payments/success?orderId=${order?.id}`, { replace: true });
         } else if (data.is_final) {
           // failed / expired are final — stop polling and let the cashier retry.
           setKhqrError(
@@ -320,7 +321,7 @@ const ProcessPayment = () => {
       try {
         ordersAPI.updateStatus(order.id, 'completed');
       } catch (_) { /* non-blocking */ }
-      navigate(`/admin/payments/success?orderId=${order.id}`);
+      navigate(`${rolePrefix}/payments/success?orderId=${order.id}`);
     }
   };
 

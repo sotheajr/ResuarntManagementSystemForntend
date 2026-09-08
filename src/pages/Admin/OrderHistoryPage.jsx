@@ -14,6 +14,12 @@ const STATUS_COLORS = {
   Cancelled: 'bg-red-100 text-red-700 border-red-200',
 };
 
+const STATUS_LABELS = {
+  paid: 'Paid',
+  cancelled: 'Cancelled',
+  completed: 'Paid',
+};
+
 const OrderHistoryPage = () => {
   const { user, isAdmin } = useAuth();
   const { language } = useLanguage();
@@ -30,6 +36,12 @@ const OrderHistoryPage = () => {
   const [detailOrder, setDetailOrder] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  const resolveStatusLabel = (order) => {
+    const rawStatus = String(order?.status || order?.Status || order?.payment_status || order?.Payment_Status || 'paid').toLowerCase();
+    if (rawStatus === 'cancelled') return 'Cancelled';
+    return 'Paid';
+  };
 
   // Delete confirmation (Admin only)
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -324,21 +336,24 @@ const OrderHistoryPage = () => {
                   <th className="text-left py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Table', language)}</th>
                   <th className="text-left py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Customer', language)}</th>
                   <th className="text-left py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Waiter', language)}</th>
+                  <th className="text-left py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Created By', language)}</th>
+                  <th className="text-left py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Checkout By', language)}</th>
                   <th className="text-right py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Total', language)}</th>
                   <th className="text-center py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Status', language)}</th>
-                  <th className="text-center py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Payment', language)}</th>
                   <th className="text-right py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Actions', language)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredOrders.map((order) => {
                   const orderId = order.id;
-                  const status = order.status || 'completed';
+                  const status = String(order.status || order.Status || order.payment_status || order.Payment_Status || 'paid').toLowerCase();
                   const customerName = resolveCustomerName(order);
                   const waiterName = resolveWaiterName(order);
+                  const createdBy = resolveCreatorName(order);
+                  const checkoutBy = resolveCashierName(order);
                   const tableNumber = resolveTableNumber(order);
                   const totalAmount = parseFloat(order.total_amount ?? 0);
-                  const paymentStatus = order.payment_status || 'unpaid';
+                  const label = resolveStatusLabel(order);
 
                   return (
                     <tr key={orderId} className="hover:bg-gray-50 transition-colors">
@@ -346,22 +361,18 @@ const OrderHistoryPage = () => {
                       <td className="px-4 py-3"><span className="font-medium text-gray-700">{tableNumber}</span></td>
                       <td className="px-4 py-3 text-gray-600">{customerName}</td>
                       <td className="px-4 py-3 text-gray-600">{waiterName}</td>
+                      <td className="px-4 py-3 text-gray-600">{createdBy}</td>
+                      <td className="px-4 py-3 text-gray-600">{checkoutBy}</td>
                       <td className="px-4 py-3 text-right"><span className="font-semibold text-gray-900">${totalAmount.toFixed(2)}</span></td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                          {STATUS_LABELS[status] || status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}`}>
-                          {paymentStatus === 'paid' ? <><CheckCircle className="w-4 h-4 mr-1" />{t('Paid', language)}</> : <><Clock className="w-4 h-4 mr-1" />{t('Unpaid', language)}</>}
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${status === 'cancelled' ? STATUS_COLORS.Cancelled : STATUS_COLORS.Paid}`}>
+                          {label}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button onClick={() => openDetail(order)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title={t('View details', language)}><Eye className="w-5 h-5" /></button>
 
-                          {/* Delete — Admin ONLY */}
                           {isAdmin && (
                             <button onClick={() => confirmDelete(order)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title={t('Delete order', language)}>
                               <Trash2 className="w-5 h-5" />

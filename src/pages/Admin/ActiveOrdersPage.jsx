@@ -21,14 +21,14 @@ const STATUS_LABELS = {
   pending: 'Pending',
   preparing: 'Preparing',
   ready: 'Ready',
-  completed: 'Completed',
+  completed: 'Served',
   cancelled: 'Cancelled',
 };
 
 const STATUS_TRANSITIONS = {
   pending: { next: 'preparing', label: 'Start Cook', icon: ChefHat, color: 'bg-blue-600 hover:bg-blue-700' },
   preparing: { next: 'ready', label: 'Mark Ready', icon: CheckCircle, color: 'bg-purple-600 hover:bg-purple-700' },
-  ready: { next: 'completed', label: 'Complete & Pay', icon: Send, color: 'bg-green-600 hover:bg-green-700' },
+  ready: { next: 'completed', label: 'Mark Served', icon: Send, color: 'bg-green-600 hover:bg-green-700' },
 };
 
 const ACTIVE_STATUSES = ['pending', 'preparing', 'ready'];
