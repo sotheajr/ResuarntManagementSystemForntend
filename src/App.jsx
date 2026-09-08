@@ -20,6 +20,7 @@ import ActiveOrdersPage from './pages/Admin/ActiveOrdersPage';
 import CompleteOrdersPage from './pages/Admin/CompleteOrdersPage';
 import OrderHistoryPage from './pages/Admin/OrderHistoryPage';
 import PaymentsPage from './pages/Admin/PaymentsPage';
+import ProcessPayment from './pages/Admin/ProcessPayment';
 import PaymentSuccessPage from './pages/Admin/PaymentSuccessPage';
 import ReportsPage from './pages/Admin/ReportsPage';
 import ReservationsPage from './pages/Admin/ReservationsPage';
@@ -148,7 +149,9 @@ function App() {
             <Route path="orders/complete" element={<CompleteOrdersPage />} />
             <Route path="orders/history" element={<OrderHistoryPage />} />
             <Route path="payments" element={<PaymentsPage />} />
+            <Route path="payments/process" element={<ProcessPayment />} />
             <Route path="payment-success" element={<PaymentSuccessPage />} />
+            <Route path="payments/success" element={<PaymentSuccessPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="reports/daily" element={<ReportsPage />} />
             <Route path="reports/weekly" element={<ReportsPage />} />
@@ -215,7 +218,9 @@ function App() {
             <Route path="reservations" element={<ReservationsPage />} />
             <Route path="pos" element={<CashierDashboard />} />
             <Route path="payments" element={<PaymentsPage />} />
+            <Route path="payments/process" element={<ProcessPayment />} />
             <Route path="payment-success" element={<PaymentSuccessPage />} />
+            <Route path="payments/success" element={<PaymentSuccessPage />} />
             <Route path="attendance" element={<AttendancePage />} />
             <Route path="attendance/clock-in" element={<ClockInPage />} />
             <Route path="attendance/clock-out" element={<ClockOutPage />} />

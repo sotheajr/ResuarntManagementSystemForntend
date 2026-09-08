@@ -99,7 +99,17 @@ export const ordersAPI = {
   // PUT /api/orders/{id}/status
   updateStatus: (id, status) => api.put(`/orders/${id}/status`, { status }),
 };
-export const paymentsAPI = createApiHelper('payments');
+export const paymentsAPI = {
+  ...createApiHelper('payments'),
+  // POST /api/payments/process — record a payment and mark order as paid
+  process: (data) => api.post('/payments/process', data),
+  // GET /api/payments/{id}/receipt — fetch receipt details for a payment
+  getReceipt: (paymentId) => api.get(`/payments/${paymentId}/receipt`),
+  // POST /api/payments/khqr/generate — create an ABA KHQR payment (TolaSaint rail)
+  khqrGenerate: (data) => api.post('/payments/khqr/generate', data),
+  // GET /api/payments/khqr/status?id={payment_id} — poll KHQR payment status
+  khqrStatus: (id) => api.get('/payments/khqr/status', { params: { id } }),
+};
 export const customersAPI = createApiHelper('customers');
 export const tablesAPI = createApiHelper('tables');
 export const menuAPI = createApiHelper('menu');
@@ -126,6 +136,8 @@ export const partnersAPI = createApiHelper('partners');
 export const stripePaymentAPI = {
     createPaymentIntent: (data) => api.post('/stripe/payment-intent', data),
     confirmPayment: (data) => api.post('/stripe/confirm', data),
+    // Create a Stripe Checkout session (returns { clientSecret, id, amount })
+    createCheckoutSession: (data) => api.post('/stripe/checkout-session', data),
 };
 export const payrollAPI = {
   ...createApiHelper('payroll'),

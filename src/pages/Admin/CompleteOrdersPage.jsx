@@ -265,8 +265,8 @@ const CompleteOrdersPage = () => {
                       <td className="px-4 py-3 text-gray-600">{waiterName}</td>
                       <td className="px-4 py-3 text-right"><span className="font-semibold text-gray-900">${totalAmount.toFixed(2)}</span></td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}`}>
-                          {paymentStatus === 'paid' ? t('Paid', language) : t('Unpaid', language)}
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
+                          {paymentStatus === 'paid' ? t('Paid', language) : t('Saved', language)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -274,12 +274,12 @@ const CompleteOrdersPage = () => {
                           <button onClick={() => openDetail(order)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title={t('View details', language)}><Eye className="w-5 h-5" /></button>
                           {paymentStatus === 'unpaid' && (
                             <button
-                              onClick={() => navigate(`${rolePrefix}/payments?orderId=${orderId}`)}
-                              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                              title={t('Process payment', language)}
+                              onClick={() => navigate(`${rolePrefix}/payments/process?orderId=${orderId}`)}
+                              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                              title={t('Pay / Checkout', language)}
                             >
-                              <CreditCard className="w-4 h-4" />
-                              {t('Pay / Checkout', language)}
+                              <CreditCard className="w-5 h-5" />
+                              {t('Pay', language)}
                             </button>
                           )}
                         </div>
