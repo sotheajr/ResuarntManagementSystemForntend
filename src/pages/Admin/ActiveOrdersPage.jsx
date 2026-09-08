@@ -6,28 +6,45 @@ import { t } from '../../translations/common';
 import {
   Plus, Trash2, Search, X, AlertTriangle,
   Loader2, ClipboardList, Eye, CheckCircle,
-  ChefHat, Send, Ban, Minus, Plus as PlusIcon, ShoppingCart
+  ChefHat, Send, Ban, Minus, Plus as PlusIcon, ShoppingCart, Clock
 } from 'lucide-react';
 
 const STATUS_COLORS = {
-  Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  Preparing: 'bg-blue-100 text-blue-700 border-blue-200',
-  Ready: 'bg-purple-100 text-purple-700 border-purple-200',
-  Served: 'bg-green-100 text-green-700 border-green-200',
-  Completed: 'bg-gray-100 text-gray-600 border-gray-200',
-  Cancelled: 'bg-red-100 text-red-700 border-red-200',
+  pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  preparing: 'bg-blue-100 text-blue-700 border-blue-200',
+  ready: 'bg-purple-100 text-purple-700 border-purple-200',
+  completed: 'bg-green-100 text-green-700 border-green-200',
+  cancelled: 'bg-red-100 text-red-700 border-red-200',
+};
+
+const STATUS_LABELS = {
+  pending: 'Pending',
+  preparing: 'Preparing',
+  ready: 'Ready',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
 };
 
 const STATUS_TRANSITIONS = {
-  Pending: ['Preparing', 'Cancelled'],
-  Preparing: ['Ready', 'Cancelled'],
-  Ready: ['Served', 'Cancelled'],
-  Served: ['Completed'],
-  Completed: [],
-  Cancelled: [],
+  pending: { next: 'preparing', label: 'Start Cook', icon: ChefHat, color: 'bg-blue-600 hover:bg-blue-700' },
+  preparing: { next: 'ready', label: 'Mark Ready', icon: CheckCircle, color: 'bg-purple-600 hover:bg-purple-700' },
+  ready: { next: 'completed', label: 'Complete & Pay', icon: Send, color: 'bg-green-600 hover:bg-green-700' },
 };
 
-const ACTIVE_STATUSES = ['Pending', 'Preparing', 'Ready', 'Served'];
+const ACTIVE_STATUSES = ['pending', 'preparing', 'ready'];
+
+// Helper: calculate elapsed time since order creation
+const getElapsedTime = (createdAt) => {
+  const now = new Date();
+  const created = new Date(createdAt);
+  const diffMs = now - created;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const hours = Math.floor(diffMins / 60);
+  const mins = diffMins % 60;
+  return `${hours}h ${mins}m ago`;
+};
 
 const ActiveOrdersPage = () => {
   const { user, isAdmin, isWaiter } = useAuth();
@@ -64,7 +81,7 @@ const ActiveOrdersPage = () => {
     discount_percent: '0',
     items: [],
   });
-  const [newItem, setNewItem] = useState({ menu_id: '', quantity: 1, price: '' });
+  const [newItem, setNewItem] = useState({ menu_item_id: '', quantity: 1, price: '' });
 
   // Delete confirmation (Admin only)
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -136,10 +153,8 @@ const ActiveOrdersPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await ordersAPI.getAll();
-      const allOrders = response.data?.data || [];
-      // Filter to only active statuses
-      setOrders(allOrders.filter((o) => ACTIVE_STATUSES.includes(o.status || o.Status || '')));
+      const response = await ordersAPI.getByType('active');
+      setOrders(response.data?.data || []);
     } catch (err) {
       setError(err.response?.data?.message || t('Failed to load active orders', language));
     } finally {
@@ -210,26 +225,13 @@ const ActiveOrdersPage = () => {
   const [updatingStatus, setUpdatingStatus] = useState(null);
 
   const handleStatusUpdate = async (order, newStatus) => {
-    const orderId = order.order_id || order.Order_ID;
+    const orderId = order.id;
     setUpdatingStatus(orderId);
     try {
-      await ordersAPI.update(orderId, { status: newStatus });
+      await ordersAPI.updateStatus(orderId, newStatus);
       await fetchOrders();
     } catch (err) {
       setError(err.response?.data?.message || t('Failed to update status', language));
-    } finally {
-      setUpdatingStatus(null);
-    }
-  };
-
-  const handleMarkServed = async (order) => {
-    const orderId = order.order_id || order.Order_ID;
-    setUpdatingStatus(orderId);
-    try {
-      await ordersAPI.complete(orderId);
-      await fetchOrders();
-    } catch (err) {
-      setError(err.response?.data?.message || t('Failed to mark order as served', language));
     } finally {
       setUpdatingStatus(null);
     }
@@ -241,7 +243,7 @@ const ActiveOrdersPage = () => {
     if (!deleteTarget) return;
     setSubmitting(true);
     try {
-      await ordersAPI.delete(deleteTarget.order_id || deleteTarget.Order_ID);
+      await ordersAPI.delete(deleteTarget.id);
       setShowDeleteConfirm(false); setDeleteTarget(null);
       await fetchOrders();
     } catch (err) {
@@ -253,8 +255,8 @@ const ActiveOrdersPage = () => {
   // ==================== Create Order ====================
   const openCreateModal = () => {
     fetchReferenceData();
-    setCreateForm({ customer_id: '', table_id: '', waiter_id: '', notes: '', discount_percent: '0', items: [] });
-    setNewItem({ menu_id: '', quantity: 1, price: '' });
+    setCreateForm({ customer_id: '', table_id: '', user_id: '', notes: '', items: [] });
+    setNewItem({ menu_item_id: '', quantity: 1, price: '' });
     setFormErrors({});
     setShowCreateModal(true);
   };
@@ -274,8 +276,8 @@ const ActiveOrdersPage = () => {
   const handleNewItemChange = (e) => {
     const { name, value } = e.target;
     setNewItem((prev) => ({ ...prev, [name]: value }));
-    if (name === 'menu_id' && value) {
-      const selected = menuItems.find((m) => String(m.menu_id || m.Menu_ID) === value);
+    if (name === 'menu_item_id' && value) {
+      const selected = menuItems.find((m) => String(m.id) === value);
       if (selected) {
         const finalPrice = getFinalPrice(selected);
         setNewItem((prev) => ({ ...prev, price: String(finalPrice), quantity: '1' }));
@@ -283,27 +285,27 @@ const ActiveOrdersPage = () => {
     }
   };
   const addItemToOrder = () => {
-    const menuId = newItem.menu_id;
+    const menuItemId = newItem.menu_item_id;
     const qty = newItem.quantity;
     const price = newItem.price;
 
-    if (!menuId || !qty || price === '' || price == null) return;
+    if (!menuItemId || !qty || price === '' || price == null) return;
     const parsedQty = parseInt(qty, 10);
     const parsedPrice = parseFloat(price);
     if (parsedQty < 1 || isNaN(parsedPrice) || parsedPrice < 0) return;
 
-    const selected = menuItems.find((m) => String(m.menu_id || m.Menu_ID) === String(menuId));
+    const selected = menuItems.find((m) => String(m.id) === String(menuItemId));
     setCreateForm((prev) => ({
       ...prev,
       items: [...prev.items, {
-        menu_id: parseInt(menuId, 10),
+        menu_item_id: parseInt(menuItemId, 10),
         quantity: parsedQty,
         price: parsedPrice,
-        item_name: selected?.menu_name || selected?.Menu_Name || 'Item',
+        item_name: selected?.menu_name || 'Item',
         _tempId: Date.now(),
       }],
     }));
-    setNewItem({ menu_id: '', quantity: 1, price: '' });
+    setNewItem({ menu_item_id: '', quantity: 1, price: '' });
   };
   const removeItemFromOrder = (tempId) => setCreateForm((prev) => ({ ...prev, items: prev.items.filter((i) => i._tempId !== tempId) }));
 
@@ -314,29 +316,22 @@ const ActiveOrdersPage = () => {
 
   const handleCreateOrder = async (e) => {
     e.preventDefault();
-    if (!createForm.waiter_id) { setFormErrors({ waiter_id: t('Please select a waiter', language) }); return; }
     if (!createForm.table_id) { setFormErrors({ table_id: t('Table is required', language) }); return; }
     if (createForm.items.length === 0) { setFormErrors({ items: t('At least one menu item is required', language) }); return; }
     setSubmitting(true);
     try {
-      // Step 1: Create the master order record with embedded items array
-      // Backend OrderController@store handles both order + order_details
-      // in a single DB transaction using the 'items' array.
-      // Format items payload as JSON array matching the single ITEMS database column
       const itemsPayload = createForm.items.map((item) => ({
-        menu_item_id: Number(item.menu_id),
-        name: item.item_name,
-        qty: Number(item.quantity),
+        menu_item_id: Number(item.menu_item_id),
+        quantity: Number(item.quantity),
         price: Number(item.price),
       }));
 
-      const response = await ordersAPI.create({
+      await ordersAPI.create({
         table_id: parseInt(createForm.table_id),
-        customer_id: createForm.customer_id ? parseInt(createForm.customer_id) : undefined,
-        waiter_id: parseInt(createForm.waiter_id),
-        notes: createForm.notes || undefined,
-        discount_percent: discountPercent > 0 ? discountPercent : undefined,
-        items: itemsPayload, // Single JSON array field → ORDERS.ITEMS
+        customer_id: createForm.customer_id ? parseInt(createForm.customer_id) : null,
+        user_id: createForm.user_id ? parseInt(createForm.user_id) : null,
+        notes: createForm.notes || null,
+        items: itemsPayload,
       });
 
       closeCreateModal();
@@ -346,48 +341,6 @@ const ActiveOrdersPage = () => {
       const validationErrors = err.response?.data?.errors;
 
       if (validationErrors) {
-        // Check if items-level validation failed — this means items weren't stored
-        const hasItemErrors = Object.keys(validationErrors).some((k) => k.startsWith('items'));
-        if (hasItemErrors) {
-          // Backend rejected the items payload. Try two-step approach:
-          // Step 1: Create order without items to get the order_id
-          // Step 2: Use the order_id to POST each item individually
-          try {
-            // Step 1: Create order header only (no items)
-            const headerResponse = await ordersAPI.create({
-              table_id: parseInt(createForm.table_id),
-              customer_id: createForm.customer_id ? parseInt(createForm.customer_id) : undefined,
-              waiter_id: parseInt(createForm.waiter_id),
-              notes: createForm.notes || undefined,
-              discount_percent: discountPercent > 0 ? discountPercent : undefined,
-              items: [], // No items — just create the header
-            });
-            // Extract newly created order_id from response
-            const newOrderId = headerResponse.data?.data?.order_id || headerResponse.data?.data?.Order_ID;
-            if (!newOrderId) {
-              setFormErrors({ general: t('Order header created but could not retrieve order ID for items.', language) });
-              return;
-            }
-            // Step 2: Update the order with the items payload using the new JSON format
-            await ordersAPI.update(newOrderId, {
-              items: createForm.items.map((item) => ({
-                menu_item_id: Number(item.menu_id),
-                name: item.item_name,
-                qty: Number(item.quantity),
-                price: Number(item.price),
-              })),
-            });
-            closeCreateModal();
-            await fetchOrders();
-            return;
-          } catch (fallbackErr) {
-            const fbMsg = fallbackErr.response?.data?.message || fallbackErr.response?.data?.error || t('Two-step order creation failed', language);
-            setFormErrors({ general: fbMsg });
-            return;
-          }
-        }
-
-        // Normal field-level validation errors
         const fieldErrors = {};
         Object.entries(validationErrors).forEach(([key, msgs]) => {
           fieldErrors[key] = Array.isArray(msgs) ? msgs[0] : msgs;
@@ -473,15 +426,13 @@ const ActiveOrdersPage = () => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredOrders.map((order) => {
-                  const orderId = order.order_id || order.Order_ID;
-                  const status = order.status || order.Status || 'Pending';
+                  const orderId = order.id;
+                  const status = order.status || 'pending';
                   const customerName = resolveCustomerName(order);
                   const waiterName = resolveWaiterName(order);
-                  const creatorName = resolveCreatorName(order);
                   const tableNumber = resolveTableNumber(order);
-                  const totalAmount = parseFloat(order.total_amount ?? order.Total_Amount ?? 0);
-                  const discountPercent = parseFloat(order.discount_percent ?? order.Discount_Percent ?? 0);
-                  const availableTransitions = STATUS_TRANSITIONS[status] || [];
+                  const totalAmount = parseFloat(order.total_amount ?? 0);
+                  const transition = STATUS_TRANSITIONS[status];
 
                   return (
                     <tr key={orderId} className="hover:bg-gray-50 transition-colors">
@@ -489,42 +440,18 @@ const ActiveOrdersPage = () => {
                       <td className="px-4 py-3"><span className="font-medium text-gray-700">{tableNumber}</span></td>
                       <td className="px-4 py-3 text-gray-600">{customerName}</td>
                       <td className="px-4 py-3 text-gray-600">{waiterName}</td>
-                      <td className="px-4 py-3 text-gray-600">{creatorName}</td>
                       <td className="px-4 py-3 text-right"><span className="font-semibold text-gray-900">${totalAmount.toFixed(2)}</span></td>
                       <td className="px-4 py-3 text-center">
-                        {discountPercent > 0 ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border bg-red-50 text-red-600 border-red-200">
-                            -{discountPercent}%
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>{t(status, language)}</span>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>{STATUS_LABELS[status] || status}</span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button onClick={() => openDetail(order)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title={t('View details', language)}><Eye className="w-5 h-5" /></button>
-                          {availableTransitions.length > 0 && (
-                            <div className="flex items-center gap-1">
-                              {availableTransitions.map((nextStatus) => {
-                                const iconMap = { Preparing: <ChefHat className="w-4 h-4" />, Ready: <CheckCircle className="w-4 h-4" />, Served: <Send className="w-4 h-4" />, Cancelled: <Ban className="w-4 h-4" /> };
-                                const colorMap = { Preparing: 'text-blue-600 hover:bg-blue-50', Ready: 'text-purple-600 hover:bg-purple-50', Served: 'text-green-600 hover:bg-green-50', Cancelled: 'text-red-600 hover:bg-red-50' };
-                                return (
-                                  <button key={nextStatus} onClick={() => handleStatusUpdate(order, nextStatus)} disabled={updatingStatus === orderId}
-                                    className={`p-2 rounded-lg transition-colors ${colorMap[nextStatus] || 'text-gray-600 hover:bg-gray-100'} disabled:opacity-50 disabled:cursor-wait`} title={`${t('Mark as', language)} ${t(nextStatus, language)}`}>
-                                    {updatingStatus === orderId ? <Loader2 className="w-4 h-4 animate-spin" /> : iconMap[nextStatus] || null}
-                                  </button>
-                                );
-                              })}
-                              {status === 'Ready' && (
-                                <button onClick={() => handleMarkServed(order)} disabled={updatingStatus === orderId}
-                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-wait" title={t('Mark as Served', language)}>
-                                  <Send className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
+                          {transition && (
+                            <button onClick={() => handleStatusUpdate(order, transition.next)} disabled={updatingStatus === orderId}
+                              className={`p-2 rounded-lg transition-colors text-white ${transition.color} disabled:opacity-50 disabled:cursor-wait`} title={transition.label}>
+                              {updatingStatus === orderId ? <Loader2 className="w-4 h-4 animate-spin" /> : <transition.icon className="w-4 h-4" />}
+                            </button>
                           )}
                           {isAdmin && (
                             <button onClick={() => confirmDelete(order)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title={t('Delete order', language)}>
@@ -565,32 +492,28 @@ const ActiveOrdersPage = () => {
                   <div><span className="block text-gray-500 mb-0.5">{t('Table', language)}</span><span className="font-medium text-gray-900">{resolveTableNumber(detailOrder)}</span></div>
                   <div><span className="block text-gray-500 mb-0.5">{t('Waiter', language)}</span><span className="font-medium text-gray-900">{resolveWaiterName(detailOrder)}</span></div>
                   <div><span className="block text-gray-500 mb-0.5">{t('Created By', language)}</span><span className="font-medium text-gray-900">{resolveCreatorName(detailOrder)}</span></div>
-                  <div><span className="block text-gray-500 mb-0.5">{t('Order Date', language)}</span><span className="font-medium text-gray-900">{detailOrder.order_date || detailOrder.Order_Date ? new Date(detailOrder.order_date || detailOrder.Order_Date).toLocaleString() : '—'}</span></div>
-                  {parseFloat(detailOrder.discount_percent ?? detailOrder.Discount_Percent ?? 0) > 0 && (
-                    <div><span className="block text-gray-500 mb-0.5">{t('Discount', language)}</span><span className="font-medium text-red-600">-{detailOrder.discount_percent || detailOrder.Discount_Percent}%</span></div>
+                  <div><span className="block text-gray-500 mb-0.5">{t('Order Date', language)}</span><span className="font-medium text-gray-900">{detailOrder.created_at ? new Date(detailOrder.created_at).toLocaleString() : '—'}</span></div>
+                  {detailOrder.notes && (
+                    <div className="col-span-2"><span className="block text-gray-500 mb-0.5">{t('Notes', language)}</span><span className="font-medium text-gray-900">{detailOrder.notes}</span></div>
                   )}
                 </div>
-                {/* Order Items — parsed safely from the single ITEMS JSON column */}
-                {(detailOrder.ITEMS || detailOrder.items) && (
+                {/* Order Items */}
+                {detailOrder.items && detailOrder.items.length > 0 && (
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2 border-b border-gray-100 pb-1">{t('Order Items', language)}</h4>
                     <div className="space-y-1.5">
-                      {(() => {
-                        const rawItems = detailOrder.ITEMS || detailOrder.items;
-                        const itemsList = typeof rawItems === 'string' ? JSON.parse(rawItems) : (rawItems || []);
-                        return itemsList.map((foodItem, idx) => (
-                          <div key={idx} className="flex items-center justify-between py-1.5 px-3 bg-gray-50 rounded-lg text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-900">{foodItem.name || foodItem.Name || foodItem.item_name || 'Item'}</span>
-                              <span className="text-gray-500">x{foodItem.qty || foodItem.Qty || foodItem.quantity || 1}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-gray-500">@ ${parseFloat(foodItem.price || foodItem.Price || 0).toFixed(2)}</span>
-                              <span className="font-medium text-gray-700">${(parseInt(foodItem.qty || foodItem.Qty || foodItem.quantity || 1) * parseFloat(foodItem.price || foodItem.Price || 0)).toFixed(2)}</span>
-                            </div>
+                      {detailOrder.items.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between py-1.5 px-3 bg-gray-50 rounded-lg text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{item.menuItem?.menu_name || item.menu_item_id || 'Item'}</span>
+                            <span className="text-gray-500">x{item.quantity}</span>
                           </div>
-                        ));
-                      })()}
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500">@ ${parseFloat(item.price || 0).toFixed(2)}</span>
+                            <span className="font-medium text-gray-700">${(item.quantity * parseFloat(item.price || 0)).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -632,13 +555,12 @@ const ActiveOrdersPage = () => {
                         </option>
                       ))}
                   </select>
-                  {formErrors.waiter_id && <p className="mt-1 text-xs text-red-500">{formErrors.waiter_id}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('Customer', language)}</label>
                   <select name="customer_id" value={createForm.customer_id} onChange={handleCreateFormChange} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">{t('Walk-in Customer', language)}</option>
-                    {customers.map((c) => (<option key={c.customer_id || c.Customer_ID} value={c.customer_id || c.Customer_ID}>{c.customer_name || c.Customer_Name || c.name || 'Customer'}</option>))}
+                    {customers.map((c) => (<option key={c.id} value={c.id}>{c.customer_name}</option>))}
                   </select>
                 </div>
               </div>
@@ -647,7 +569,7 @@ const ActiveOrdersPage = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('Table', language)} <span className="text-red-500">*</span></label>
                   <select name="table_id" value={createForm.table_id} onChange={handleCreateFormChange} className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.table_id ? 'border-red-400' : 'border-gray-300'}`}>
                     <option value="">{t('Select a table', language)}</option>
-                    {tables.map((tbl) => (<option key={tbl.table_id || tbl.Table_ID} value={tbl.table_id || tbl.Table_ID}>{t('Table', language)} {tbl.table_number || tbl.Table_Number} ({tbl.status || tbl.Status || t('Available', language)})</option>))}
+                    {tables.map((tbl) => (<option key={tbl.id} value={tbl.id}>{t('Table', language)} {tbl.table_number} ({tbl.status || t('Available', language)})</option>))}
                   </select>
                   {formErrors.table_id && <p className="mt-1 text-xs text-red-500">{formErrors.table_id}</p>}
                 </div>
@@ -661,7 +583,7 @@ const ActiveOrdersPage = () => {
                 <div className="flex items-end gap-2 mb-3 p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1">
                     <label className="block text-xs text-gray-500 mb-1">{t('Menu Item', language)}</label>
-                      <select name="menu_id" value={newItem.menu_id} onChange={handleNewItemChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                      <select name="menu_item_id" value={newItem.menu_item_id} onChange={handleNewItemChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="">{t('Select item', language)}</option>
                         {menuItems
                           .filter((m) => {
@@ -669,12 +591,12 @@ const ActiveOrdersPage = () => {
                             return itemStatus === 'available' || itemStatus === '1' || itemStatus === 'true' || m.is_available === true;
                           })
                           .map((m) => {
-                            const basePrice = parseFloat(m.price ?? m.Price ?? 0);
-                            const discount = parseFloat(m.discount_percent ?? m.Discount_Percent ?? m.discount ?? m.Discount ?? 0);
+                            const basePrice = parseFloat(m.price ?? 0);
+                            const discount = parseFloat(m.discount_percent ?? 0);
                             const finalPrice = discount > 0 ? basePrice * (1 - discount / 100) : basePrice;
                             return (
-                              <option key={m.menu_id || m.Menu_ID} value={m.menu_id || m.Menu_ID}>
-                                {m.menu_name || m.Menu_Name} — ${finalPrice.toFixed(2)}{discount > 0 ? ` (Original: $${basePrice.toFixed(2)})` : ''}
+                              <option key={m.id} value={m.id}>
+                                {m.menu_name} — ${finalPrice.toFixed(2)}{discount > 0 ? ` (Original: $${basePrice.toFixed(2)})` : ''}
                               </option>
                             );
                           })}

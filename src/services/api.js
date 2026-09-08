@@ -92,7 +92,13 @@ export const authAPI = {
   updateProfile: (data) => api.put('/profile/update', data),
 };
 
-export const ordersAPI = createApiHelper('orders');
+export const ordersAPI = {
+  ...createApiHelper('orders'),
+  // GET /api/orders?type=active|completed|history
+  getByType: (type, params = {}) => api.get('/orders', { params: { type, ...params } }),
+  // PUT /api/orders/{id}/status
+  updateStatus: (id, status) => api.put(`/orders/${id}/status`, { status }),
+};
 export const paymentsAPI = createApiHelper('payments');
 export const customersAPI = createApiHelper('customers');
 export const tablesAPI = createApiHelper('tables');

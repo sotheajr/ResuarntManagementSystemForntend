@@ -105,12 +105,8 @@ const CompleteOrdersPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await ordersAPI.getAll();
-      const allOrders = response.data?.data || [];
-      setOrders(allOrders.filter((o) => {
-        const s = o.status || o.Status || '';
-        return s === 'Served' || s === 'Completed';
-      }));
+      const response = await ordersAPI.getByType('completed');
+      setOrders(response.data?.data || []);
     } catch (err) {
       setError(err.response?.data?.message || t('Failed to load completed orders', language));
     } finally {
@@ -254,12 +250,12 @@ const CompleteOrdersPage = () => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredOrders.map((order) => {
-                  const orderId = order.order_id || order.Order_ID;
-                  const status = order.status || order.Status || 'Completed';
+                  const orderId = order.id;
                   const customerName = resolveCustomerName(order);
                   const waiterName = resolveWaiterName(order);
                   const tableNumber = resolveTableNumber(order);
-                  const totalAmount = parseFloat(order.total_amount ?? order.Total_Amount ?? 0);
+                  const totalAmount = parseFloat(order.total_amount ?? 0);
+                  const paymentStatus = order.payment_status || 'unpaid';
 
                   return (
                     <tr key={orderId} className="hover:bg-gray-50 transition-colors">
@@ -269,19 +265,23 @@ const CompleteOrdersPage = () => {
                       <td className="px-4 py-3 text-gray-600">{waiterName}</td>
                       <td className="px-4 py-3 text-right"><span className="font-semibold text-gray-900">${totalAmount.toFixed(2)}</span></td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>{t(status, language)}</span>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}`}>
+                          {paymentStatus === 'paid' ? t('Paid', language) : t('Unpaid', language)}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button onClick={() => openDetail(order)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title={t('View details', language)}><Eye className="w-5 h-5" /></button>
-                          <button
-                            onClick={() => navigate(`${rolePrefix}/payments?orderId=${orderId}`)}
-                            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                            title={t('Process payment', language)}
-                          >
-                            <CreditCard className="w-4 h-4" />
-                            {t('Pay / Checkout', language)}
-                          </button>
+                          {paymentStatus === 'unpaid' && (
+                            <button
+                              onClick={() => navigate(`${rolePrefix}/payments?orderId=${orderId}`)}
+                              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                              title={t('Process payment', language)}
+                            >
+                              <CreditCard className="w-4 h-4" />
+                              {t('Pay / Checkout', language)}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

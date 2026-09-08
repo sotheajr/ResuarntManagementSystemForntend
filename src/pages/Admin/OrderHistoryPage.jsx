@@ -36,6 +36,9 @@ const OrderHistoryPage = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Pagination
+  const [pagination, setPagination] = useState({ currentPage: 1, lastPage: 1, total: 0 });
+
   // ==================== Fetch Tables ====================
   const fetchTables = useCallback(async () => {
     try {
@@ -65,13 +68,14 @@ const OrderHistoryPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await ordersAPI.getAll();
-      const allOrders = response.data?.data || [];
-      // Filter to only Paid or Cancelled statuses (archival)
-      setOrders(allOrders.filter((o) => {
-        const s = o.status || o.Status || '';
-        return s === 'Paid' || s === 'Cancelled';
-      }));
+      const response = await ordersAPI.getByType('history', { paginate: true, per_page: 15 });
+      const data = response.data?.data;
+      setOrders(data?.data || []);
+      setPagination({
+        currentPage: data?.current_page || 1,
+        lastPage: data?.last_page || 1,
+        total: data?.total || 0,
+      });
     } catch (err) {
       setError(err.response?.data?.message || t('Failed to load data', language));
     } finally {
@@ -238,7 +242,7 @@ const OrderHistoryPage = () => {
     setShowDetail(true);
     setDetailLoading(true);
     try {
-      const response = await ordersAPI.getById(order.order_id || order.Order_ID);
+      const response = await ordersAPI.getById(order.id);
       setDetailOrder(response.data?.data || order);
     } catch (err) {
       setDetailOrder(order);
@@ -254,7 +258,7 @@ const OrderHistoryPage = () => {
     if (!deleteTarget) return;
     setSubmitting(true);
     try {
-      await ordersAPI.delete(deleteTarget.order_id || deleteTarget.Order_ID);
+      await ordersAPI.delete(deleteTarget.id);
       setShowDeleteConfirm(false); setDeleteTarget(null);
       await fetchOrders();
     } catch (err) {
@@ -320,23 +324,21 @@ const OrderHistoryPage = () => {
                   <th className="text-left py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Table', language)}</th>
                   <th className="text-left py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Customer', language)}</th>
                   <th className="text-left py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Waiter', language)}</th>
-                  <th className="text-left py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Created By', language)}</th>
-                  <th className="text-left py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Checkout By', language)}</th>
                   <th className="text-right py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Total', language)}</th>
                   <th className="text-center py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Status', language)}</th>
+                  <th className="text-center py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Payment', language)}</th>
                   <th className="text-right py-3.5 px-4 text-sm font-semibold tracking-wider text-slate-700 dark:text-slate-300">{t('Actions', language)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredOrders.map((order) => {
-                  const orderId = order.order_id || order.Order_ID;
-                  const status = order.status || order.Status || 'Paid';
+                  const orderId = order.id;
+                  const status = order.status || 'completed';
                   const customerName = resolveCustomerName(order);
                   const waiterName = resolveWaiterName(order);
-                  const creatorName = resolveCreatorName(order);
-                  const cashierName = resolveCashierName(order);
                   const tableNumber = resolveTableNumber(order);
-                  const totalAmount = parseFloat(order.total_amount ?? order.Total_Amount ?? 0);
+                  const totalAmount = parseFloat(order.total_amount ?? 0);
+                  const paymentStatus = order.payment_status || 'unpaid';
 
                   return (
                     <tr key={orderId} className="hover:bg-gray-50 transition-colors">
@@ -344,11 +346,16 @@ const OrderHistoryPage = () => {
                       <td className="px-4 py-3"><span className="font-medium text-gray-700">{tableNumber}</span></td>
                       <td className="px-4 py-3 text-gray-600">{customerName}</td>
                       <td className="px-4 py-3 text-gray-600">{waiterName}</td>
-                      <td className="px-4 py-3 text-gray-600">{creatorName}</td>
-                      <td className="px-4 py-3 text-gray-600">{cashierName}</td>
                       <td className="px-4 py-3 text-right"><span className="font-semibold text-gray-900">${totalAmount.toFixed(2)}</span></td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>{status === 'Paid' ? <><CheckCircle className="w-4 h-4 mr-1" />{t('Paid', language)}</> : <><Ban className="w-4 h-4 mr-1" />{t('Cancelled', language)}</>}</span>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                          {STATUS_LABELS[status] || status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold border ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}`}>
+                          {paymentStatus === 'paid' ? <><CheckCircle className="w-4 h-4 mr-1" />{t('Paid', language)}</> : <><Clock className="w-4 h-4 mr-1" />{t('Unpaid', language)}</>}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
@@ -376,7 +383,7 @@ const OrderHistoryPage = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto animate-scale-in">
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">{t('Order', language)} #{detailOrder?.order_id || detailOrder?.Order_ID || ''}</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('Order', language)} #{detailOrder?.id || ''}</h2>
               <button onClick={closeDetail} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"><X className="w-5 h-5" /></button>
             </div>
             {detailLoading ? (
@@ -384,39 +391,34 @@ const OrderHistoryPage = () => {
             ) : detailOrder ? (
               <div className="px-6 py-4 space-y-5">
                 <div className="flex items-center justify-between">
-                  <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border ${STATUS_COLORS[detailOrder.status || detailOrder.Status || 'Paid'] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
-                    {(detailOrder.status || detailOrder.Status) === 'Paid' ? t('Paid', language) : t('Cancelled', language)}
+                  <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border ${STATUS_COLORS[detailOrder.status] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                    {STATUS_LABELS[detailOrder.status] || detailOrder.status}
                   </span>
-                  <span className="text-2xl font-bold text-gray-900">${parseFloat(detailOrder.total_amount ?? detailOrder.Total_Amount ?? 0).toFixed(2)}</span>
+                  <span className="text-2xl font-bold text-gray-900">${parseFloat(detailOrder.total_amount ?? 0).toFixed(2)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><span className="block text-gray-500 mb-0.5">{t('Customer', language)}</span><span className="font-medium text-gray-900">{resolveCustomerName(detailOrder)}</span></div>
                   <div><span className="block text-gray-500 mb-0.5">{t('Table', language)}</span><span className="font-medium text-gray-900">{resolveTableNumber(detailOrder)}</span></div>
                   <div><span className="block text-gray-500 mb-0.5">{t('Waiter', language)}</span><span className="font-medium text-gray-900">{resolveWaiterName(detailOrder)}</span></div>
-                  <div><span className="block text-gray-500 mb-0.5">{t('Checkout By', language)}</span><span className="font-medium text-gray-900">{resolveCashierName(detailOrder)}</span></div>
-                  <div><span className="block text-gray-500 mb-0.5">{t('Order Date', language)}</span><span className="font-medium text-gray-900">{detailOrder.order_date || detailOrder.Order_Date ? new Date(detailOrder.order_date || detailOrder.Order_Date).toLocaleString() : '—'}</span></div>
+                  <div><span className="block text-gray-500 mb-0.5">{t('Order Date', language)}</span><span className="font-medium text-gray-900">{detailOrder.created_at ? new Date(detailOrder.created_at).toLocaleString() : '—'}</span></div>
                 </div>
-                {/* Order Items — parsed safely from the single ITEMS JSON column */}
-                {(detailOrder.ITEMS || detailOrder.items) && (
+                {/* Order Items */}
+                {detailOrder.items && detailOrder.items.length > 0 && (
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2 border-b border-gray-100 pb-1">{t('Order Items', language)}</h4>
                     <div className="space-y-1.5">
-                      {(() => {
-                        const rawItems = detailOrder.ITEMS || detailOrder.items;
-                        const itemsList = typeof rawItems === 'string' ? JSON.parse(rawItems) : (rawItems || []);
-                        return itemsList.map((foodItem, idx) => (
-                          <div key={idx} className="flex items-center justify-between py-1.5 px-3 bg-gray-50 rounded-lg text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-900">{foodItem.name || foodItem.Name || foodItem.item_name || 'Item'}</span>
-                              <span className="text-gray-500">x{foodItem.qty || foodItem.Qty || foodItem.quantity || 1}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-gray-500">@ ${parseFloat(foodItem.price || foodItem.Price || 0).toFixed(2)}</span>
-                              <span className="font-medium text-gray-700">${(parseInt(foodItem.qty || foodItem.Qty || foodItem.quantity || 1) * parseFloat(foodItem.price || foodItem.Price || 0)).toFixed(2)}</span>
-                            </div>
+                      {detailOrder.items.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between py-1.5 px-3 bg-gray-50 rounded-lg text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{item.menuItem?.menu_name || item.menu_item_id || 'Item'}</span>
+                            <span className="text-gray-500">x{item.quantity}</span>
                           </div>
-                        ));
-                      })()}
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500">@ ${parseFloat(item.price || 0).toFixed(2)}</span>
+                            <span className="font-medium text-gray-700">${(item.quantity * parseFloat(item.price || 0)).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -438,7 +440,7 @@ const OrderHistoryPage = () => {
             <div className="p-6 text-center">
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4"><AlertTriangle className="w-6 h-6 text-red-600" /></div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('Delete Order from History', language)}</h3>
-              <p className="text-sm text-gray-500 mb-2">{t('Are you sure you want to permanently delete', language)} <span className="font-medium text-gray-700">{t('Order', language)} #{deleteTarget.order_id || deleteTarget.Order_ID}</span> {t('from history?', language)}</p>
+              <p className="text-sm text-gray-500 mb-2">{t('Are you sure you want to permanently delete', language)} <span className="font-medium text-gray-700">{t('Order', language)} #{deleteTarget.id}</span> {t('from history?', language)}</p>
               <p className="text-xs text-red-500">{t('This action cannot be undone.', language)}</p>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 pb-6">
