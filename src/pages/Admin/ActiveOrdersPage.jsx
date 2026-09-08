@@ -317,7 +317,17 @@ const ActiveOrdersPage = () => {
   const handleCreateOrder = async (e) => {
     e.preventDefault();
     if (!createForm.table_id) { setFormErrors({ table_id: t('Table is required', language) }); return; }
-    if (createForm.items.length === 0) { setFormErrors({ items: t('At least one menu item is required', language) }); return; }
+
+    // UX improvement: If items list is empty but a menu item is currently selected in the input fields,
+    // auto-add it to the items list before submitting
+    if (createForm.items.length === 0 && newItem.menu_item_id && newItem.quantity && newItem.price) {
+      addItemToOrder();
+    }
+
+    if (createForm.items.length === 0) {
+      setFormErrors({ items: t('Please select a menu item and click the "+" button to add it to the order', language) });
+      return;
+    }
     setSubmitting(true);
     try {
       const itemsPayload = createForm.items.map((item) => ({
@@ -610,7 +620,7 @@ const ActiveOrdersPage = () => {
                     <label className="block text-xs text-gray-500 mb-1">{t('Price', language)}</label>
                     <input type="number" name="price" step="0.01" min="0" value={newItem.price} onChange={handleNewItemChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
-                   <button type="button" onClick={addItemToOrder} disabled={!newItem.menu_id || !newItem.quantity || newItem.price === '' || newItem.price == null} className="p-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" title={t('Add item', language)}><PlusIcon className="w-5 h-5" /></button>
+                   <button type="button" onClick={addItemToOrder} disabled={!newItem.menu_item_id || !newItem.quantity || newItem.price === '' || newItem.price == null} className={`p-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${newItem.menu_item_id && !createForm.items.length ? 'ring-2 ring-yellow-400 ring-offset-1 animate-pulse' : ''}`} title={t('Add item to order', language)}><PlusIcon className="w-5 h-5" /></button>
                 </div>
                 {createForm.items.length > 0 ? (
                   <div className="space-y-1.5 mb-3">
