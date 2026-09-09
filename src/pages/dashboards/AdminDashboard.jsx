@@ -1,231 +1,377 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
-  Users, Shield, FolderTree, UtensilsCrossed, Table,
-  UsersRound, CalendarCheck, ClipboardList, CreditCard,
-  BarChart3, Package, Truck, DollarSign,
-  ShoppingBag, AlertTriangle, RefreshCw, AlertCircle
+  ArrowRight,
+  CircleDollarSign,
+  CreditCard,
+  DollarSign,
+  Package,
+  RefreshCw,
+  ShoppingBag,
+  Table,
+  TrendingUp,
+  Users,
+  UtensilsCrossed,
 } from 'lucide-react';
-import api, { ordersAPI, paymentsAPI, inventoryAPI, usersAPI, tablesAPI } from '../../services/api';
+import api from '../../services/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
+
+const rangeOptions = ['today', 'week', 'month', 'year'];
+const paymentColors = ['#f97316', '#10b981', '#3b82f6', '#a78bfa', '#f43f5e', '#f59e0b'];
+
+const formatCurrency = (value) => {
+  const numericValue = Number(value || 0);
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(numericValue);
+};
 
 const AdminDashboard = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalOrders: 0,
-    todayRevenue: 0,
-    pendingOrders: 0,
-    activeTables: 0,
-    lowStockItems: 0,
+  const [range, setRange] = useState('today');
+  const [data, setData] = useState({
+    summary: {},
+    chart: [],
+    paymentMethods: [],
+    topItems: [],
+    tableStatus: [],
+    recentOrders: [],
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (selectedRange = range) => {
     setLoading(true);
-    setError(null);
+    setError('');
+
     try {
-      // Try the dedicated dashboard-summary endpoint first
-      let summaryData = null;
-      try {
-        const summaryRes = await api.get('/admin/dashboard-summary');
-        summaryData = summaryRes.data?.data || summaryRes.data;
-      } catch (summaryErr) {
-        // Fallback: fetch individual endpoints
-        console.log('Dashboard summary endpoint not available, fetching individual endpoints...');
-      }
-
-      if (summaryData) {
-        setStats({
-          totalUsers: summaryData.total_users || summaryData.totalUsers || 0,
-          totalOrders: summaryData.total_orders || summaryData.totalOrders || 0,
-          todayRevenue: parseFloat(summaryData.today_revenue || summaryData.todayRevenue || 0),
-          pendingOrders: summaryData.pending_orders || summaryData.pendingOrders || 0,
-          activeTables: summaryData.active_tables || summaryData.activeTables || 0,
-          lowStockItems: summaryData.low_stock_items || summaryData.lowStockItems || 0,
-        });
-      } else {
-        // Fallback: fetch from individual endpoints
-        const [ordersRes, paymentsRes, inventoryRes, usersRes, tablesRes] = await Promise.allSettled([
-          ordersAPI.getAll(),
-          paymentsAPI.getToday(),
-          inventoryAPI.getLowStock(),
-          usersAPI.getAll(),
-          tablesAPI.getAll(),
-        ]);
-
-        const orders = ordersRes.status === 'fulfilled' ? ordersRes.value.data?.data || [] : [];
-        const payments = paymentsRes.status === 'fulfilled' ? paymentsRes.value.data?.data || [] : [];
-        const lowStock = inventoryRes.status === 'fulfilled' ? inventoryRes.value.data?.data || [] : [];
-        const users = usersRes.status === 'fulfilled' ? usersRes.value.data?.data || [] : [];
-        const tables = tablesRes.status === 'fulfilled' ? tablesRes.value.data?.data || [] : [];
-
-        const todayRevenue = Array.isArray(payments)
-          ? payments.reduce((sum, p) => sum + parseFloat(p.amount || p.total_amount || 0), 0)
-          : 0;
-
-        setStats({
-          totalUsers: users.length,
-          totalOrders: orders.length,
-          todayRevenue,
-          pendingOrders: orders.filter(o => (o.status === 'Pending' || o.status === 'pending')).length,
-          activeTables: tables.filter(t => (t.status === 'Occupied' || t.status === 'occupied')).length,
-          lowStockItems: lowStock.length,
-        });
-      }
+      const response = await api.get('/dashboard/stats', { params: { range: selectedRange } });
+      const payload = response.data?.data || response.data || {};
+      setData({
+        summary: payload.summary || {},
+        chart: payload.chart || [],
+        paymentMethods: payload.paymentMethods || [],
+        topItems: payload.topItems || [],
+        tableStatus: payload.tableStatus || [],
+        recentOrders: payload.recentOrders || [],
+      });
     } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
-      setError('Failed to load dashboard data. Please ensure the backend server is running.');
+      console.error('Failed to fetch dashboard stats:', err);
+      setError('Failed to load dashboard metrics. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const quickActions = [
-    { label: 'Manage Users', icon: Users, path: '/admin/users', color: 'bg-blue-500' },
-    { label: 'Menu Items', icon: UtensilsCrossed, path: '/admin/menu', color: 'bg-green-500' },
-    { label: 'Tables', icon: Table, path: '/admin/tables', color: 'bg-purple-500' },
-    { label: 'Orders', icon: ClipboardList, path: '/admin/orders', color: 'bg-orange-500' },
-    { label: 'Reports', icon: BarChart3, path: '/admin/reports', color: 'bg-red-500' },
-    { label: 'Inventory', icon: Package, path: '/admin/inventory', color: 'bg-teal-500' },
+  useEffect(() => {
+    fetchDashboardData(range);
+  }, [range]);
+
+  const chartMax = useMemo(() => {
+    const maxValue = data.chart.reduce((max, item) => Math.max(max, Number(item.sales || 0)), 0);
+    return maxValue || 1;
+  }, [data.chart]);
+
+  const totalPaymentValue = useMemo(
+    () => data.paymentMethods.reduce((sum, item) => sum + Number(item.total || 0), 0),
+    [data.paymentMethods]
+  );
+
+  const topRevenue = useMemo(
+    () => data.topItems.reduce((max, item) => Math.max(max, Number(item.revenue || 0)), 0),
+    [data.topItems]
+  );
+
+  const donutSegments = useMemo(() => {
+    if (!data.paymentMethods.length || totalPaymentValue === 0) {
+      return 'rgba(148,163,184,0.2)';
+    }
+
+    let cursor = 0;
+    const segments = data.paymentMethods.map((item, index) => {
+      const percentage = (Number(item.total || 0) / totalPaymentValue) * 100;
+      const start = cursor;
+      cursor += percentage;
+      return `${paymentColors[index % paymentColors.length]} ${start}% ${cursor}%`;
+    });
+
+    return `conic-gradient(${segments.join(', ')})`;
+  }, [data.paymentMethods, totalPaymentValue]);
+
+  const summaryCards = [
+    { label: 'Revenue', value: formatCurrency(data.summary.revenue), icon: DollarSign, tone: 'bg-emerald-100 text-emerald-600' },
+    { label: 'Orders', value: data.summary.orders ?? 0, icon: ShoppingBag, tone: 'bg-blue-100 text-blue-600' },
+    { label: 'Customers', value: data.summary.customers ?? 0, icon: Users, tone: 'bg-violet-100 text-violet-600' },
+    { label: 'Avg. Order', value: formatCurrency(data.summary.avgOrderValue), icon: CircleDollarSign, tone: 'bg-amber-100 text-amber-600' },
   ];
-
-  const statCards = [
-    { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-100' },
-    { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-100' },
-    { label: "Today's Revenue", value: `$${stats.todayRevenue.toFixed(2)}`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-100' },
-    { label: 'Pending Orders', value: stats.pendingOrders, icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-100' },
-    { label: 'Active Tables', value: stats.activeTables, icon: Table, color: 'text-purple-600', bg: 'bg-purple-100' },
-    { label: 'Low Stock Items', value: stats.lowStockItems, icon: Package, color: 'text-red-600', bg: 'bg-red-100' },
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <LoadingSpinner message="Loading dashboard data..." size="lg" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="card text-center max-w-md">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Connection Error</h3>
-          <p className="text-gray-500 text-sm mb-4">{error}</p>
-          <button onClick={fetchDashboardData} className="btn-primary inline-flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
-      {/* Welcome Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">
-            Welcome back, {user?.full_name || 'Admin'}!
+          <p className="text-sm font-medium uppercase tracking-[0.2em] text-rose-500">Operations overview</p>
+          <h2 className="mt-1 text-2xl font-bold text-slate-900">
+            Welcome back, {user?.full_name || 'Admin'}
           </h2>
-          <p className="text-gray-500 mt-1">Here's what's happening at your restaurant today.</p>
         </div>
-        <button
-          onClick={fetchDashboardData}
-          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          title="Refresh data"
-        >
-          <RefreshCw className="w-5 h-5" />
-        </button>
+
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+            {rangeOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setRange(option)}
+                className={`rounded-lg px-3 py-2 text-sm font-medium capitalize transition ${
+                  range === option ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => fetchDashboardData(range)}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="card flex items-center gap-3 p-4">
-              <div className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center flex-shrink-0`}>
-                <Icon className={`w-5 h-5 ${stat.color}`} />
+      {error && (
+        <div className="card border border-red-200 bg-red-50 text-red-700">{error}</div>
+      )}
+
+      {loading ? (
+        <div className="flex min-h-[420px] items-center justify-center">
+          <LoadingSpinner message="Loading dashboard metrics..." size="lg" />
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {summaryCards.map(({ label, value, icon: Icon, tone }) => (
+              <div key={label} className="card flex items-center justify-between p-5">
+                <div>
+                  <p className="text-sm text-slate-500">{label}</p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
+                </div>
+                <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${tone}`}>
+                  <Icon className="h-6 w-6" />
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs text-gray-500 truncate">{stat.label}</p>
-                <p className="text-lg font-bold text-gray-800">{stat.value}</p>
+            ))}
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[1.45fr_0.8fr]">
+            <div className="card overflow-hidden p-0">
+              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Revenue overview</p>
+                  <h3 className="mt-1 text-lg font-semibold text-slate-900">{range.charAt(0).toUpperCase() + range.slice(1)} sales</h3>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+                  <TrendingUp className="h-4 w-4" />
+                  {formatCurrency(data.summary.revenue)}
+                </div>
+              </div>
+
+              <div className="flex h-52 items-end gap-3 px-5 pb-5 pt-4">
+                {data.chart.length > 0 ? data.chart.map((item) => (
+                  <div key={`${item.label}-${item.sales}`} className="flex flex-1 flex-col items-center justify-end gap-2">
+                    <span className="text-[10px] font-medium text-slate-400">{item.label}</span>
+                    <div className="flex h-36 w-full items-end justify-center">
+                      <div
+                        className="w-full rounded-t-xl bg-gradient-to-t from-rose-500 to-orange-400 shadow-sm"
+                        style={{ height: `${(Number(item.sales || 0) / chartMax) * 100}%` }}
+                        title={`${item.label}: ${formatCurrency(item.sales)}`}
+                      />
+                    </div>
+                  </div>
+                )) : (
+                  <div className="flex w-full items-center justify-center text-sm text-slate-500">No sales data for this period.</div>
+                )}
               </div>
             </div>
-          );
-        })}
-      </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">Quick Actions</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <button
-                key={action.path}
-                onClick={() => navigate(action.path)}
-                className="card hover:shadow-md transition-shadow cursor-pointer text-center p-4 flex flex-col items-center gap-2"
-              >
-                <div className={`w-10 h-10 rounded-lg ${action.color} flex items-center justify-center`}>
-                  <Icon className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-sm font-semibold text-gray-700">{action.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Full Management Sections */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">Full System Management</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            { label: 'Users & Roles', desc: 'Manage staff accounts and permissions', icon: Users, path: '/admin/users' },
-            { label: 'Categories', desc: 'Organize menu categories and sub-categories', icon: FolderTree, path: '/admin/categories' },
-            { label: 'Menu Items', desc: 'Add and update food & beverage items', icon: UtensilsCrossed, path: '/admin/menu' },
-            { label: 'Tables', desc: 'Manage restaurant table layout', icon: Table, path: '/admin/tables' },
-            { label: 'Customers', desc: 'View and manage customer information', icon: UsersRound, path: '/admin/customers' },
-            { label: 'Reservations', desc: 'Handle table reservations', icon: CalendarCheck, path: '/admin/reservations' },
-            { label: 'Orders', desc: 'View and manage all orders', icon: ClipboardList, path: '/admin/orders' },
-            { label: 'Payments', desc: 'Process payments and view receipts', icon: CreditCard, path: '/admin/payments' },
-            { label: 'Reports', desc: 'Sales reports and analytics', icon: BarChart3, path: '/admin/reports' },
-            { label: 'Inventory', desc: 'Track ingredient stock levels', icon: Package, path: '/admin/inventory' },
-            { label: 'Suppliers', desc: 'Manage supplier information', icon: Truck, path: '/admin/suppliers' },
-            { label: 'Roles & Permissions', desc: 'Configure role-based access', icon: Shield, path: '/admin/roles' },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className="card hover:shadow-md transition-shadow cursor-pointer text-left flex items-start gap-3"
-              >
-                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                  <Icon className="w-5 h-5 text-gray-600" />
-                </div>
+            <div className="card p-5">
+              <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-800">{item.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Payment split</p>
+                  <h3 className="mt-1 text-lg font-semibold text-slate-900">Payment methods</h3>
                 </div>
+                <div className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">{data.paymentMethods.length} active</div>
+              </div>
+
+              <div className="flex items-center justify-center py-2">
+                <div className="relative flex h-36 w-36 items-center justify-center rounded-full border-8 border-slate-100" style={{ background: donutSegments }}>
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-center shadow-inner">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Total</div>
+                      <div className="text-sm font-bold text-slate-900">{formatCurrency(totalPaymentValue)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {data.paymentMethods.length > 0 ? data.paymentMethods.map((method, index) => (
+                  <div key={`${method.payment_method}-${index}`} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: paymentColors[index % paymentColors.length] }} />
+                      <span className="text-sm font-medium text-slate-700">{method.payment_method}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold text-slate-900">{formatCurrency(method.total)}</div>
+                      <div className="text-xs text-slate-500">{method.count} payments</div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">No payment data recorded.</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+            <div className="card p-0">
+              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Best performers</p>
+                  <h3 className="mt-1 text-lg font-semibold text-slate-900">Top selling items</h3>
+                </div>
+                <UtensilsCrossed className="h-5 w-5 text-slate-400" />
+              </div>
+
+              <div className="space-y-4 p-5">
+                {data.topItems.length > 0 ? data.topItems.map((item, index) => (
+                  <div key={`${item.name}-${index}`}>
+                    <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 text-xs font-bold text-rose-600">
+                          {index + 1}
+                        </span>
+                        <span className="truncate font-medium text-slate-700">{item.name}</span>
+                      </div>
+                      <span className="font-semibold text-slate-900">{formatCurrency(item.revenue)}</span>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-rose-500 to-orange-400"
+                        style={{ width: `${(Number(item.revenue || 0) / Math.max(topRevenue, 1)) * 100}%` }}
+                      />
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">{item.qty_sold} sold</div>
+                  </div>
+                )) : (
+                  <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">No top selling items yet.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="card p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Floor status</p>
+                  <h3 className="mt-1 text-lg font-semibold text-slate-900">Table occupancy</h3>
+                </div>
+                <Table className="h-5 w-5 text-slate-400" />
+              </div>
+
+              <div className="space-y-4">
+                {data.tableStatus.length > 0 ? data.tableStatus.map((row) => {
+                  const total = data.tableStatus.reduce((sum, item) => sum + Number(item.count || 0), 0) || 1;
+                  const percent = ((Number(row.count || 0) / total) * 100).toFixed(0);
+                  return (
+                    <div key={row.status}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="font-medium text-slate-700 capitalize">{row.status}</span>
+                        <span className="text-slate-500">{row.count} ({percent}%)</span>
+                      </div>
+                      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className={`h-full rounded-full ${
+                            row.status === 'Available' ? 'bg-emerald-500' : row.status === 'Occupied' ? 'bg-rose-500' : 'bg-amber-500'
+                          }`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">No table data available.</div>
+                )}
+              </div>
+
+              <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">Occupancy rate</span>
+                  <span className="text-lg font-bold text-slate-900">{data.summary.tableOccupancy ?? 0}%</span>
+                </div>
+                <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-rose-500" style={{ width: `${data.summary.tableOccupancy ?? 0}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Recent activity</p>
+                <h3 className="mt-1 text-lg font-semibold text-slate-900">Recent orders</h3>
+              </div>
+              <button type="button" className="inline-flex items-center gap-2 text-sm font-medium text-rose-600">
+                View all
+                <ArrowRight className="h-4 w-4" />
               </button>
-            );
-          })}
-        </div>
-      </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th className="px-5 py-3 font-semibold">Order</th>
+                    <th className="px-5 py-3 font-semibold">Customer</th>
+                    <th className="px-5 py-3 font-semibold">Table</th>
+                    <th className="px-5 py-3 font-semibold">Status</th>
+                    <th className="px-5 py-3 font-semibold">Payment</th>
+                    <th className="px-5 py-3 text-right font-semibold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {data.recentOrders.length > 0 ? data.recentOrders.map((order) => (
+                    <tr key={order.id} className="hover:bg-slate-50">
+                      <td className="px-5 py-3 font-medium text-slate-800">#{order.id}</td>
+                      <td className="px-5 py-3 text-slate-700">{order.customer_name}</td>
+                      <td className="px-5 py-3 text-slate-700">{order.table_number}</td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          order.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                          order.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'
+                        }`}>
+                          {order.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-slate-700">{order.payment_status}</td>
+                      <td className="px-5 py-3 text-right font-semibold text-slate-900">{formatCurrency(order.total_amount)}</td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="6" className="px-5 py-6 text-center text-slate-500">No recent orders available.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
