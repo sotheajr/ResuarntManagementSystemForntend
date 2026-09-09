@@ -240,7 +240,13 @@ const OrderHistoryPage = () => {
   };
 
   // ==================== Filtering ====================
-  const filteredOrders = orders.filter((o) => {
+  const visibleHistoryOrders = orders.filter((order) => {
+    const paymentStatus = String(order.payment_status ?? order.Payment_Status ?? '').toLowerCase();
+    const status = String(order.status ?? order.Status ?? '').toLowerCase();
+    return paymentStatus === 'paid' || status === 'cancelled';
+  });
+
+  const filteredOrders = visibleHistoryOrders.filter((o) => {
     const term = searchTerm.toLowerCase();
     const orderId = String(o.order_id || o.Order_ID || '');
     const customerName = resolveCustomerName(o).toLowerCase();
