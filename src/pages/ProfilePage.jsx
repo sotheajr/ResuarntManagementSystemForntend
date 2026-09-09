@@ -23,19 +23,20 @@ const ProfilePage = () => {
   const selectRef = useRef(null);
 
   // Build the full image URL from the path stored in DB
-  const userImageUrl = user?.avatar || user?.avatar_url || user?.image
-    ? (user?.avatar || user?.avatar_url || user?.image).startsWith('http')
-      ? (user?.avatar || user?.avatar_url || user?.image)
+  const rawUserImage = user?.image || user?.avatar || user?.avatar_url || user?.profile_image || '/default-avatar.png';
+  const userImageUrl = rawUserImage.startsWith('http')
+    ? rawUserImage
+    : rawUserImage === '/default-avatar.png'
+      ? rawUserImage
       : (() => {
-          let cleanPath = user?.avatar || user?.avatar_url || user?.image;
+          let cleanPath = rawUserImage;
           if (cleanPath.startsWith('/storage/')) {
             cleanPath = cleanPath.replace('/storage/', '');
           } else if (cleanPath.startsWith('storage/')) {
             cleanPath = cleanPath.replace('storage/', '');
           }
           return `${API_BASE_URL}/storage/${cleanPath}`;
-        })()
-    : null;
+        })();
 
   // Reset error state when image path changes
   useEffect(() => {

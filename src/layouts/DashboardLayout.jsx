@@ -78,17 +78,18 @@ const DashboardLayout = () => {
     setExpandedMenu(expandedMenu === label ? null : label);
   };
 
-  const headerImgUrl = user?.image
-    ? user.image.startsWith('http')
-      ? user.image
+  const rawHeaderImage = user?.image || user?.avatar || user?.avatar_url || user?.profile_image || '/default-avatar.png';
+  const headerImgUrl = rawHeaderImage.startsWith('http')
+    ? rawHeaderImage
+    : rawHeaderImage === '/default-avatar.png'
+      ? rawHeaderImage
       : (() => {
-          let cleanPath = user.image;
+          let cleanPath = rawHeaderImage;
           if (cleanPath.startsWith('/storage/')) cleanPath = cleanPath.replace('/storage/', '');
           else if (cleanPath.startsWith('storage/')) cleanPath = cleanPath.replace('storage/', '');
           return `${API_BASE_URL}/storage/${cleanPath}`;
-        })()
-    : null;
-  const showHeaderImg = !!headerImgUrl && !avatarError;
+        })();
+  const showHeaderImg = !!headerImgUrl && !avatarError && rawHeaderImage !== '/default-avatar.png';
 
   const adminMenuItems = [
     { label: t('Dashboard', language), icon: LayoutDashboard, path: '/admin/dashboard' },
