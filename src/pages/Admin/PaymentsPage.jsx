@@ -365,16 +365,24 @@ const PaymentsPage = () => {
         order_id: orderId,
         payment_method: 'Visa',
         cashier_id: currentUserId,
+        transaction_id: paymentIntent?.id || paymentIntent?.paymentIntentId || null,
+        external_payment_id: paymentIntent?.id || paymentIntent?.paymentIntentId || null,
       });
       setPaymentSuccess({ orderId });
       showToast('success', `Visa card payment of $${orderTotal.toFixed(2)} completed successfully!`);
       await fetchOrders();
+      const role = user?.role?.toLowerCase();
+      const basePath = role === 'cashier' ? '/cashier' : '/admin';
+      navigate(`${basePath}/payment-success?orderId=${orderId}`);
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || 'Failed to record payment';
       if (msg.toLowerCase().includes('already paid')) {
         setPaymentSuccess({ orderId });
         showToast('success', `Visa payment already recorded for #${orderId}.`);
         await fetchOrders();
+        const role = user?.role?.toLowerCase();
+        const basePath = role === 'cashier' ? '/cashier' : '/admin';
+        navigate(`${basePath}/payment-success?orderId=${orderId}`);
         return;
       }
       showToast('error', 'Card payment succeeded but failed to record. Please check orders page.');

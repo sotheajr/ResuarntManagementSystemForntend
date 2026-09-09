@@ -24,24 +24,30 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
     setProcessing(true);
     setError(null);
 
-    const { error: submitError, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      redirect: 'if_required',
-      confirmParams: {
-        receipt_email: email,
-      },
-    });
+    try {
+      const { error: submitError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required',
+        confirmParams: {
+          receipt_email: email,
+        },
+      });
 
-    if (submitError) {
-      setError(submitError.message || 'Payment failed. Please try again.');
-      setProcessing(false);
-      return;
-    }
+      if (submitError) {
+        setError(submitError.message || 'Payment failed. Please try again.');
+        setProcessing(false);
+        return;
+      }
 
-    if (paymentIntent && paymentIntent.status === 'succeeded') {
-      onSuccess(paymentIntent);
-    } else {
+      if (paymentIntent && paymentIntent.status === 'succeeded') {
+        onSuccess(paymentIntent);
+        return;
+      }
+
       setError('Payment was not completed. Status: ' + (paymentIntent?.status || 'unknown'));
+      setProcessing(false);
+    } catch (submitException) {
+      setError(submitException?.message || 'Payment failed. Please try again.');
       setProcessing(false);
     }
   };
