@@ -274,12 +274,12 @@ const CompleteOrdersPage = () => {
                           <button onClick={() => openDetail(order)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title={t('View details', language)}><Eye className="w-5 h-5" /></button>
                           {paymentStatus === 'unpaid' && (
                             <button
-                              onClick={() => navigate(`${rolePrefix}/payments/process?orderId=${orderId}`)}
+                              onClick={() => navigate(`${rolePrefix}/payments?orderId=${orderId}`)}
                               className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                               title={t('Pay / Checkout', language)}
                             >
                               <CreditCard className="w-5 h-5" />
-                              {t('Pay', language)}
+                              {t('Pay / Checkout', language)}
                             </button>
                           )}
                         </div>

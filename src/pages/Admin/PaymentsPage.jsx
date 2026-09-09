@@ -54,6 +54,8 @@ const PaymentsPage = () => {
   // Stripe card modal state (embedded PaymentElement)
   const [stripeModalState, setStripeModalState] = useState(null); // { clientSecret, amount, email, orderId }
 
+  const getOrderId = (order) => order?.id ?? order?.order_id ?? order?.Order_ID ?? order?.OrderId ?? order?._id;
+
   // ==================== Helper resolvers ====================
   const resolveTableNumber = (order) => {
     const fromRelation = order.table?.table_number ?? order.table?.Table_Number ?? order.table_number ?? order.Table_Number;
@@ -148,16 +150,16 @@ const PaymentsPage = () => {
 
   // ==================== Auto-select order from query param ====================
   useEffect(() => {
-    if (!loading && orders.length > 0 && orderIdParam) {
-      const found = orders.find(
-        (o) => String(o.order_id || o.Order_ID) === String(orderIdParam)
-      );
+    if (!loading && orderIdParam) {
+      const found = orders.find((o) => String(getOrderId(o)) === String(orderIdParam));
       if (found) {
         setSelectedOrder(found);
         setPaymentMethod('Cash');
         setAmountReceived('');
         setProcessingPayment(false);
         setPaymentSuccess(null);
+      } else {
+        setSelectedOrder(null);
       }
     }
   }, [loading, orders, orderIdParam]);
@@ -202,7 +204,7 @@ const PaymentsPage = () => {
 
   const handleProcessPayment = async () => {
     if (!selectedOrder) return;
-    const orderId = selectedOrder.order_id || selectedOrder.Order_ID;
+    const orderId = getOrderId(selectedOrder);
 
     // If KHQR is selected, open the ABA modal
     if (paymentMethod === 'KHQR') {
@@ -286,11 +288,11 @@ const PaymentsPage = () => {
   // Update order status badge to "Paid" in the local UI state
   const handleAbaPaymentSuccess = (paymentData) => {
     if (!selectedOrder) return;
-    const orderId = selectedOrder.order_id || selectedOrder.Order_ID;
+    const orderId = getOrderId(selectedOrder);
 
     setOrders((prevOrders) =>
       prevOrders.map((o) => {
-        const oid = o.order_id || o.Order_ID;
+        const oid = getOrderId(o);
         if (String(oid) === String(orderId)) {
           return { ...o, status: 'Paid', Status: 'Paid' };
         }
@@ -304,7 +306,7 @@ const PaymentsPage = () => {
 
   const handleAbaSuccess = async (paidOrderId, paidPaymentId) => {
     if (!selectedOrder) return;
-    const orderId = paidOrderId || selectedOrder.order_id || selectedOrder.Order_ID;
+    const orderId = paidOrderId || getOrderId(selectedOrder);
     const paymentId = paidPaymentId || null;
 
     // The payment record was already created as 'Pending' in Step 1 (generate QR)
@@ -336,7 +338,7 @@ const PaymentsPage = () => {
   const handleStripeSuccess = async (paymentIntent) => {
     setStripeModalState(null);
     if (!selectedOrder) return;
-    const orderId = selectedOrder.order_id || selectedOrder.Order_ID;
+    const orderId = getOrderId(selectedOrder);
     const currentUserId = user?.USER_ID || user?.user_id || user?.id;
 
     try {
@@ -416,7 +418,7 @@ const PaymentsPage = () => {
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <h2 className="text-lg font-semibold text-gray-900">
-                {t('Checkout', language)} — {t('Order', language)} #{selectedOrder.order_id || selectedOrder.Order_ID}
+                {t('Checkout', language)} — {t('Order', language)} #{getOrderId(selectedOrder)}
               </h2>
             </div>
           </div>
@@ -564,7 +566,7 @@ const PaymentsPage = () => {
       {showAbaModal && selectedOrder && (
         <AbaPaymentModal
           totalAmount={orderTotal}
-          orderId={selectedOrder.order_id || selectedOrder.Order_ID}
+          orderId={getOrderId(selectedOrder)}
           tableName={resolveTableNumber(selectedOrder)}
           onSuccess={handleAbaSuccess}
           onPaymentSuccess={handleAbaPaymentSuccess}
