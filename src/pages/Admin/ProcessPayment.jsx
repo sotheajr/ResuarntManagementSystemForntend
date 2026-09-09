@@ -171,10 +171,10 @@ const ProcessPayment = () => {
       setStripeLoading(true);
       setError(null);
       try {
-        const response = await stripePaymentAPI.createCheckoutSession({
+        const response = await stripePaymentAPI.createPaymentIntent({
           email: user?.email || 'customer@example.com',
           order_id: orderId,
-          total_amount: orderTotal,
+          amount: orderTotal,
         });
         const responseData = response.data?.data || response.data;
         const clientSecret = responseData?.clientSecret;

@@ -13,7 +13,7 @@ const PaymentSuccessPage = () => {
   const { language } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const orderIdParam = searchParams.get('orderId');
+  const orderIdParam = searchParams.get('orderId') ?? searchParams.get('order_id');
 
   const [payments, setPayments] = useState([]);
   const [staffList, setStaffList] = useState([]);

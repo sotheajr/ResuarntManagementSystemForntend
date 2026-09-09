@@ -30,6 +30,7 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
         redirect: 'if_required',
         confirmParams: {
           receipt_email: email,
+          return_url: `${window.location.origin}/admin/payments/success?orderId=${orderId}`,
         },
       });
 

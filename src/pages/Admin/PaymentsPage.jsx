@@ -233,18 +233,16 @@ const PaymentsPage = () => {
       setStripeLoading(true);
       setError(null);
       try {
-        const response = await stripePaymentAPI.createCheckoutSession({
+        const response = await stripePaymentAPI.createPaymentIntent({
           email: user?.email || 'customer@example.com',
           order_id: orderId,
-          total_amount: orderTotal,
+          amount: orderTotal,
         });
-        // Backend returns { success, message, data: { clientSecret, id, amount } }
         const responseData = response.data?.data || response.data;
         const clientSecret = responseData?.clientSecret;
         if (!clientSecret) {
           throw new Error('No client secret returned from server');
         }
-        // Open the embedded Stripe card modal
         setStripeModalState({
           clientSecret,
           amount: orderTotal,
