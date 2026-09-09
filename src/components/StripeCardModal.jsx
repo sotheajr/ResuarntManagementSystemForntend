@@ -15,11 +15,15 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
+  const [isReady, setIsReady] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!stripe || !elements) return;
+    if (!stripe || !elements) {
+      return;
+    }
 
     setProcessing(true);
     setError(null);
@@ -27,11 +31,11 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
     try {
       const { error: submitError, paymentIntent } = await stripe.confirmPayment({
         elements,
-        redirect: 'if_required',
         confirmParams: {
           receipt_email: email,
-          return_url: `${window.location.origin}/admin/payments/success?orderId=${orderId}`,
+          return_url: `${window.location.origin}/admin/payments/success?order_id=${orderId}`,
         },
+        redirect: 'if_required',
       });
 
       if (submitError) {
@@ -40,8 +44,10 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
         return;
       }
 
-      if (paymentIntent && paymentIntent.status === 'succeeded') {
-        onSuccess(paymentIntent);
+      if (paymentIntent?.status === 'succeeded') {
+        if (typeof onSuccess === 'function') {
+          await onSuccess(paymentIntent);
+        }
         return;
       }
 
@@ -64,6 +70,14 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
       {/* Card Element */}
       <div className="p-4 border border-gray-200 rounded-xl bg-white">
         <PaymentElement
+          onReady={() => {
+            setIsReady(true);
+            setLoading(false);
+          }}
+          onLoadError={() => {
+            setLoading(false);
+            setError('Stripe payment form failed to load. Please refresh and try again.');
+          }}
           options={{
             style: {
               base: {
@@ -96,11 +110,13 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
         </button>
         <button
           type="submit"
-          disabled={!stripe || processing}
+          disabled={!stripe || !isReady || loading || processing}
           className="flex-1 px-4 py-3 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 rounded-xl transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
         >
           {processing ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
+          ) : loading ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</>
           ) : (
             <><CreditCard className="w-4 h-4" /> Pay ${amount.toFixed(2)}</>
           )}
