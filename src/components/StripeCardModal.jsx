@@ -1,20 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { X, Loader2, CheckCircle, AlertTriangle, CreditCard } from 'lucide-react';
 
-const stripeKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-
-if (!stripeKey) {
-  console.warn('Stripe Publishable Key is not configured.');
-}
-
-const stripePromise = stripeKey
-  ? loadStripe(stripeKey).catch((err) => {
-      console.error('Stripe load error:', err);
-      return null;
-    })
-  : null;
+const getEnvStripeKey = () => import.meta.env.VITE_STRIPE_PUBLIC_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || null;
 
 /**
  * Inner checkout form that handles Stripe Element submission.
@@ -153,13 +142,61 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
  *   onClose       - callback to close modal
  */
 const StripeCardModal = ({ clientSecret, amount, email, orderId, onSuccess, onClose }) => {
+  const [publishableKey, setPublishableKey] = useState(getEnvStripeKey());
+  const [stripePromise, setStripePromise] = useState(null);
+  const [configError, setConfigError] = useState(null);
+
   console.log('Stripe clientSecret:', clientSecret);
 
-  if (!stripeKey) {
+  useEffect(() => {
+    let isMounted = true;
+
+    const initStripe = async () => {
+      const key = getEnvStripeKey();
+
+      if (key) {
+        setPublishableKey(key);
+        setStripePromise(loadStripe(key));
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/stripe/config');
+        const data = await response.json();
+        const backendKey = data?.publishableKey || data?.key || data?.publishable_key;
+
+        if (!isMounted) return;
+
+        if (!backendKey) {
+          console.warn('Stripe Publishable Key is not configured.');
+          setConfigError('Stripe Publishable Key is not configured.');
+          setStripePromise(null);
+          return;
+        }
+
+        setPublishableKey(backendKey);
+        setStripePromise(loadStripe(backendKey));
+      } catch (err) {
+        console.error('Stripe config fetch error:', err);
+        if (isMounted) {
+          setConfigError('Stripe Publishable Key is not configured.');
+          setStripePromise(null);
+        }
+      }
+    };
+
+    initStripe();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (!publishableKey && configError) {
     return (
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 text-center">
-          <p className="text-sm font-medium text-red-600">Stripe Publishable Key is not configured.</p>
+          <p className="text-sm font-medium text-red-600">{configError}</p>
         </div>
       </div>
     );
@@ -185,7 +222,9 @@ const StripeCardModal = ({ clientSecret, amount, email, orderId, onSuccess, onCl
             Order #{orderId || 'N/A'} — Secure card payment via Stripe
           </div>
 
-          {stripePromise && clientSecret ? (
+          {!publishableKey ? (
+            <div className="py-8 text-center text-sm text-gray-500">Loading Stripe configuration...</div>
+          ) : stripePromise && clientSecret ? (
             <Elements stripe={stripePromise} options={{ clientSecret }}>
               <CheckoutForm
                 clientSecret={clientSecret}
@@ -197,9 +236,7 @@ const StripeCardModal = ({ clientSecret, amount, email, orderId, onSuccess, onCl
               />
             </Elements>
           ) : (
-            <div className="py-8 text-center text-sm text-gray-500">
-              {stripeKey ? 'Loading card payment...' : 'Stripe Publishable Key is not configured.'}
-            </div>
+            <div className="py-8 text-center text-sm text-gray-500">Loading card payment...</div>
           )}
         </div>
 
