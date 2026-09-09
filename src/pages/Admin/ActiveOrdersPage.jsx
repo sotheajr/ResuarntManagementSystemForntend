@@ -340,6 +340,7 @@ const ActiveOrdersPage = () => {
         table_id: parseInt(createForm.table_id),
         customer_id: createForm.customer_id ? parseInt(createForm.customer_id) : null,
         user_id: createForm.user_id ? parseInt(createForm.user_id) : null,
+        waiter_id: createForm.waiter_id ? parseInt(createForm.waiter_id) : null,
         notes: createForm.notes || null,
         items: itemsPayload,
       });

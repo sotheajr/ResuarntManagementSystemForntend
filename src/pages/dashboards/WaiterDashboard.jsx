@@ -136,6 +136,8 @@ const WaiterDashboard = () => {
       await ordersAPI.create({
         table_id: selectedTable.table_id || selectedTable.id,
         customer_id: selectedCustomer?.customer_id || selectedCustomer?.id || 1,
+        user_id: user?.user_id ?? user?.User_ID ?? user?.id,
+        waiter_id: user?.user_id ?? user?.User_ID ?? user?.id,
         items: cart.map(item => ({
           menu_id: item.menu_id,
           quantity: item.quantity,

@@ -184,6 +184,12 @@ const OrderHistoryPage = () => {
 
   // ==================== Helper: resolve cashier name from payment.cashier relation, CHECKOUT_BY, or ID fallback ====================
   const resolveCashierName = (order) => {
+    const checkoutUser = order.checkout_user ?? order.checkoutUser;
+    if (checkoutUser) {
+      const fromRelation = checkoutUser.name ?? checkoutUser.full_name ?? checkoutUser.username ?? checkoutUser.Username ?? checkoutUser.Full_Name ?? checkoutUser.Name;
+      if (fromRelation) return fromRelation;
+    }
+
     // Try nested payment → cashier relation (backend must eager-load payment.cashier)
     const p = order.payment;
     if (p) {
@@ -193,7 +199,6 @@ const OrderHistoryPage = () => {
         if (fromRelation) return fromRelation;
       }
 
-      // Try the CHECKOUT_BY column on the payment record itself (our new dedicated field)
       const checkoutByOnPayment = p.checkout_by ?? p.CHECKOUT_BY;
       if (checkoutByOnPayment) {
         const numId = Number(checkoutByOnPayment);
@@ -206,7 +211,6 @@ const OrderHistoryPage = () => {
         return `Staff #${checkoutByOnPayment}`;
       }
 
-      // Payment exists but no cashier nested — try flat cashier_id on payment
       const cashierIdOnPayment = p.cashier_id ?? p.Cashier_ID;
       if (cashierIdOnPayment) {
         const numId = Number(cashierIdOnPayment);
@@ -220,7 +224,6 @@ const OrderHistoryPage = () => {
       }
     }
 
-    // Fallback: resolve from the CHECKOUT_BY column on the order itself
     const checkoutById = order.checkout_by ?? order.CHECKOUT_BY;
     if (checkoutById) {
       const numId = Number(checkoutById);
@@ -233,7 +236,6 @@ const OrderHistoryPage = () => {
       return `Staff #${checkoutById}`;
     }
 
-    // No payment record and no CHECKOUT_BY — show N/A
     return 'N/A';
   };
 
@@ -348,9 +350,9 @@ const OrderHistoryPage = () => {
                   const orderId = order.id;
                   const status = String(order.status || order.Status || order.payment_status || order.Payment_Status || 'paid').toLowerCase();
                   const customerName = resolveCustomerName(order);
-                  const waiterName = resolveWaiterName(order);
-                  const createdBy = resolveCreatorName(order);
-                  const checkoutBy = resolveCashierName(order);
+                  const waiterName = order.waiter?.name || order.waiter?.full_name || order.waiter?.username || order.waiter_name || '—';
+                  const createdBy = order.creator?.name || order.creator?.full_name || order.creator?.username || order.user?.name || order.user?.full_name || order.user?.username || '—';
+                  const checkoutBy = order.checkout_user?.name || order.checkout_user?.full_name || order.checkout_user?.username || order.checkout_by_name || order.checkout_by || 'N/A';
                   const tableNumber = resolveTableNumber(order);
                   const totalAmount = parseFloat(order.total_amount ?? 0);
                   const label = resolveStatusLabel(order);

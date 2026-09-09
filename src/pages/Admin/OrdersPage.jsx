@@ -328,6 +328,8 @@ const OrdersPage = () => {
       const payload = {
         table_id: parseInt(createForm.table_id),
         customer_id: createForm.customer_id ? parseInt(createForm.customer_id) : undefined,
+        user_id: createForm.user_id ? parseInt(createForm.user_id) : undefined,
+        waiter_id: createForm.waiter_id ? parseInt(createForm.waiter_id) : undefined,
         notes: createForm.notes || undefined,
         discount_percent: discountPercent > 0 ? discountPercent : undefined,
         items: createForm.items.map((item) => ({
