@@ -76,7 +76,8 @@ const ActiveOrdersPage = () => {
   const [createForm, setCreateForm] = useState({
     customer_id: '',
     table_id: '',
-    waiter_id: '',  // Added waiter_id for Waiter selection
+    waiter_id: '',
+    user_id: '',
     notes: '',
     discount_percent: '0',
     items: [],
@@ -255,7 +256,16 @@ const ActiveOrdersPage = () => {
   // ==================== Create Order ====================
   const openCreateModal = () => {
     fetchReferenceData();
-    setCreateForm({ customer_id: '', table_id: '', user_id: '', notes: '', items: [] });
+    const currentUserId = user?.user_id ?? user?.User_ID ?? user?.id ?? '';
+    setCreateForm({
+      customer_id: '',
+      table_id: '',
+      waiter_id: '',
+      user_id: currentUserId,
+      notes: '',
+      discount_percent: '0',
+      items: [],
+    });
     setNewItem({ menu_item_id: '', quantity: 1, price: '' });
     setFormErrors({});
     setShowCreateModal(true);
@@ -557,14 +567,18 @@ const ActiveOrdersPage = () => {
                     <option value="">{t('Select waiter', language)}</option>
                     {allWaiters
                       .filter((u) => {
-                        const roleName = u.role?.role_name || u.role?.Role_Name || '';
-                        return roleName.toLowerCase() === 'waiter';
+                        const roleName = (u.role?.role_name || u.role?.Role_Name || u.role_name || u.Role_Name || '').toString().toLowerCase();
+                        return roleName === 'waiter' || roleName.includes('waiter');
                       })
-                      .map((u) => (
-                        <option key={u.User_ID || u.user_id} value={u.User_ID || u.user_id}>
-                          {u.Username || u.username || u.Full_Name || u.full_name || u.Name || u.name || `User #${u.User_ID || u.user_id}`}
-                        </option>
-                      ))}
+                      .map((u) => {
+                        const userId = u.user_id ?? u.User_ID ?? u.id ?? u.ID;
+                        const label = u.username ?? u.Username ?? u.full_name ?? u.Full_Name ?? u.name ?? u.Name ?? `User #${userId}`;
+                        return (
+                          <option key={userId} value={userId}>
+                            {label}
+                          </option>
+                        );
+                      })}
                   </select>
                 </div>
                 <div>

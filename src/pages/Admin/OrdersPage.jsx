@@ -58,6 +58,8 @@ const OrdersPage = () => {
   const [createForm, setCreateForm] = useState({
     customer_id: '',
     table_id: '',
+    waiter_id: '',
+    user_id: '',
     notes: '',
     discount_percent: '0',
     items: [],
