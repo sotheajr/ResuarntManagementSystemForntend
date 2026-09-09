@@ -116,14 +116,19 @@ const PaymentsPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await ordersAPI.getAll();
-      const allOrders = response.data?.data || [];
-      setOrders(allOrders.filter((o) => {
-        const s = o.status || o.Status || '';
-        return s === 'Served' || s === 'Completed';
+      const response = await ordersAPI.getByType('completed');
+      const payload = response.data?.data || response.data || [];
+      const list = Array.isArray(payload) ? payload : [];
+
+      setOrders(list.filter((o) => {
+        const status = String(o.status || o.Status || '').toLowerCase();
+        const paymentStatus = String(o.payment_status || o.Payment_Status || 'unpaid').toLowerCase();
+        return ['completed', 'served'].includes(status) && paymentStatus === 'unpaid';
       }));
     } catch (err) {
-      setError(err.response?.data?.message || t('Failed to load completed orders', language));
+      console.error('Failed to load completed orders:', err.response?.data || err);
+      setOrders([]);
+      setError(t('Failed to load completed orders', language));
     } finally {
       setLoading(false);
     }
@@ -150,19 +155,30 @@ const PaymentsPage = () => {
 
   // ==================== Auto-select order from query param ====================
   useEffect(() => {
-    if (!loading && orderIdParam) {
-      const found = orders.find((o) => String(getOrderId(o)) === String(orderIdParam));
-      if (found) {
-        setSelectedOrder(found);
-        setPaymentMethod('Cash');
-        setAmountReceived('');
-        setProcessingPayment(false);
-        setPaymentSuccess(null);
-      } else {
-        setSelectedOrder(null);
+    if (!orderIdParam) return;
+
+    const loadOrderById = async () => {
+      try {
+        const response = await ordersAPI.getById(orderIdParam);
+        const order = response.data?.data || response.data;
+
+        if (order) {
+          setSelectedOrder(order);
+          setPaymentMethod('Cash');
+          setAmountReceived('');
+          setProcessingPayment(false);
+          setPaymentSuccess(null);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to load order by orderId:', err.response?.data || err);
       }
-    }
-  }, [loading, orders, orderIdParam]);
+
+      setSelectedOrder(null);
+    };
+
+    loadOrderById();
+  }, [orderIdParam]);
 
   // ==================== Filtering ====================
   const filteredOrders = orders.filter((o) => {
@@ -264,16 +280,19 @@ const PaymentsPage = () => {
       setPaymentSuccess({ orderId });
       showToast('success', `Payment of $${orderTotal.toFixed(2)} ${t('paid via', language)} ${paymentMethod}!`);
       await fetchOrders();
+      const role = user?.role?.toLowerCase();
+      const basePath = role === 'cashier' ? '/cashier' : '/admin';
+      navigate(`${basePath}/payment-success?orderId=${orderId}`);
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || t('Failed to process payment', language);
 
       if (msg.toLowerCase().includes('already paid')) {
-        try {
-          await ordersAPI.update(orderId, { status: 'Paid' });
-        } catch (_) { }
-        showToast('success', `Payment already recorded for #${orderId}. Status synced to Paid.`);
         setPaymentSuccess({ orderId });
+        showToast('success', `Payment already recorded for #${orderId}.`);
         await fetchOrders();
+        const role = user?.role?.toLowerCase();
+        const basePath = role === 'cashier' ? '/cashier' : '/admin';
+        navigate(`${basePath}/payment-success?orderId=${orderId}`);
         return;
       }
 
@@ -294,14 +313,14 @@ const PaymentsPage = () => {
       prevOrders.map((o) => {
         const oid = getOrderId(o);
         if (String(oid) === String(orderId)) {
-          return { ...o, status: 'Paid', Status: 'Paid' };
+          return { ...o, status: 'completed', Status: 'completed', payment_status: 'paid', Payment_Status: 'paid' };
         }
         return o;
       })
     );
 
     // Also update the selected order so the badge reflects immediately
-    setSelectedOrder((prev) => (prev ? { ...prev, status: 'Paid', Status: 'Paid' } : prev));
+    setSelectedOrder((prev) => (prev ? { ...prev, status: 'completed', Status: 'completed', payment_status: 'paid', Payment_Status: 'paid' } : prev));
   };
 
   const handleAbaSuccess = async (paidOrderId, paidPaymentId) => {
