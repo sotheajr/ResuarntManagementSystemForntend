@@ -168,16 +168,22 @@ const OrderHistoryPage = () => {
     return 'Walk-in';
   };
 
-  // ==================== Helper: resolve creator name from CREATED_BY column ====================
+  // ==================== Helper: resolve creator name from creator relation or fallback IDs ====================
   const resolveCreatorName = (order) => {
-    const creatorId = order.created_by ?? order.CREATED_BY;
+    const creator = order.creator ?? order.user ?? null;
+    if (creator) {
+      const fromRelation = creator.full_name ?? creator.Full_Name ?? creator.name ?? creator.Name ?? creator.username ?? creator.Username;
+      if (fromRelation) return fromRelation;
+    }
+
+    const creatorId = order.created_by ?? order.CREATED_BY ?? order.user_id ?? order.User_ID;
     if (!creatorId) return '—';
     const numId = Number(creatorId);
     const matched = waiters.find(
       (u) => Number(u.user_id) === numId || Number(u.User_ID) === numId || Number(u.id) === numId
     );
     if (matched) {
-      return matched?.username ?? matched?.Username ?? matched?.full_name ?? matched?.Full_Name ?? matched?.name ?? matched?.Name ?? `Staff #${creatorId}`;
+      return matched?.full_name ?? matched?.Full_Name ?? matched?.name ?? matched?.Name ?? matched?.username ?? matched?.Username ?? `Staff #${creatorId}`;
     }
     return `Staff #${creatorId}`;
   };
@@ -357,7 +363,7 @@ const OrderHistoryPage = () => {
                   const status = String(order.status || order.Status || order.payment_status || order.Payment_Status || 'paid').toLowerCase();
                   const customerName = resolveCustomerName(order);
                   const waiterName = order.waiter?.name || order.waiter?.full_name || order.waiter?.username || order.waiter_name || '—';
-                  const createdBy = order.creator?.name || order.creator?.full_name || order.creator?.username || order.user?.name || order.user?.full_name || order.user?.username || '—';
+                  const createdBy = resolveCreatorName(order);
                   const checkoutBy = order.checkout_user?.name || order.checkout_user?.full_name || order.checkout_user?.username || order.checkout_by_name || order.checkout_by || 'N/A';
                   const tableNumber = resolveTableNumber(order);
                   const totalAmount = parseFloat(order.total_amount ?? 0);
