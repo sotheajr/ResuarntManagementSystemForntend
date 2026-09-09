@@ -3,9 +3,18 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { loadStripe } from '@stripe/stripe-js';
 import { X, Loader2, CheckCircle, AlertTriangle, CreditCard } from 'lucide-react';
 
-// Load Stripe with the public key from env or a safe test fallback for dev
-const stripePk = import.meta.env.VITE_STRIPE_PUBLIC_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_51RPn3NQvXDWFbEa4QC7cUeadd65HPn9AkRqJNphPUNwnbrGbZtQdXaPacbRkeNCvw0bXu3TljAbRwz3FqWGX0NKD00NtyvqqCs';
-const stripePromise = loadStripe(stripePk);
+const stripeKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+if (!stripeKey) {
+  console.warn('Stripe Publishable Key is not configured.');
+}
+
+const stripePromise = stripeKey
+  ? loadStripe(stripeKey).catch((err) => {
+      console.error('Stripe load error:', err);
+      return null;
+    })
+  : null;
 
 /**
  * Inner checkout form that handles Stripe Element submission.
@@ -17,6 +26,7 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
   const [error, setError] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -73,9 +83,12 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
           <PaymentElement
             onReady={() => {
               setIsReady(true);
+              setLoaded(true);
               setLoading(false);
             }}
-            onLoadError={() => {
+            onLoadError={(err) => {
+              console.error('Stripe load error:', err);
+              setLoaded(false);
               setLoading(false);
               setError('Stripe payment form failed to load. Please refresh and try again.');
             }}
@@ -112,7 +125,7 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
         </button>
         <button
           type="submit"
-          disabled={!stripe || !elements || isReady === false || loading || processing}
+          disabled={!stripe || !elements || !loaded || loading || processing}
           className="flex-1 px-4 py-3 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 rounded-xl transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
         >
           {processing ? (
@@ -142,6 +155,16 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
 const StripeCardModal = ({ clientSecret, amount, email, orderId, onSuccess, onClose }) => {
   console.log('Stripe clientSecret:', clientSecret);
 
+  if (!stripeKey) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 text-center">
+          <p className="text-sm font-medium text-red-600">Stripe Publishable Key is not configured.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-scale-in overflow-hidden">
@@ -162,7 +185,7 @@ const StripeCardModal = ({ clientSecret, amount, email, orderId, onSuccess, onCl
             Order #{orderId || 'N/A'} — Secure card payment via Stripe
           </div>
 
-          {clientSecret ? (
+          {stripePromise && clientSecret ? (
             <Elements stripe={stripePromise} options={{ clientSecret }}>
               <CheckoutForm
                 clientSecret={clientSecret}
@@ -174,7 +197,9 @@ const StripeCardModal = ({ clientSecret, amount, email, orderId, onSuccess, onCl
               />
             </Elements>
           ) : (
-            <div className="py-8 text-center text-sm text-gray-500">Loading card payment...</div>
+            <div className="py-8 text-center text-sm text-gray-500">
+              {stripeKey ? 'Loading card payment...' : 'Stripe Publishable Key is not configured.'}
+            </div>
           )}
         </div>
 
