@@ -41,6 +41,7 @@ const AdminDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [hoveredBar, setHoveredBar] = useState(null);
 
   const fetchDashboardData = async (selectedRange = range) => {
     setLoading(true);
@@ -71,8 +72,30 @@ const AdminDashboard = () => {
 
   const chartMax = useMemo(() => {
     const maxValue = data.chart.reduce((max, item) => Math.max(max, Number(item.sales || 0)), 0);
-    return maxValue || 1;
+    return Math.max(5, Math.ceil((maxValue || 1) / 5) * 5);
   }, [data.chart]);
+
+  const chartMeta = useMemo(() => {
+    const width = 760;
+    const height = 260;
+    const padding = { top: 24, right: 16, bottom: 42, left: 54 };
+    const innerWidth = width - padding.left - padding.right;
+    const innerHeight = height - padding.top - padding.bottom;
+    const tickValues = Array.from({ length: 6 }, (_, index) => (chartMax / 5) * index);
+    const barGap = 16;
+    const barWidth = Math.min(36, (innerWidth - (data.chart.length - 1) * barGap) / Math.max(data.chart.length, 1));
+
+    return {
+      width,
+      height,
+      padding,
+      innerWidth,
+      innerHeight,
+      tickValues,
+      barGap,
+      barWidth,
+    };
+  }, [chartMax, data.chart.length]);
 
   const totalPaymentValue = useMemo(
     () => data.paymentMethods.reduce((sum, item) => sum + Number(item.total || 0), 0),
@@ -181,20 +204,102 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className="flex h-52 items-end gap-3 px-5 pb-5 pt-4">
-                {data.chart.length > 0 ? data.chart.map((item) => (
-                  <div key={`${item.label}-${item.sales}`} className="flex flex-1 flex-col items-center justify-end gap-2">
-                    <span className="text-[10px] font-medium text-slate-400">{item.label}</span>
-                    <div className="flex h-36 w-full items-end justify-center">
-                      <div
-                        className="w-full rounded-t-xl bg-gradient-to-t from-rose-500 to-orange-400 shadow-sm"
-                        style={{ height: `${(Number(item.sales || 0) / chartMax) * 100}%` }}
-                        title={`${item.label}: ${formatCurrency(item.sales)}`}
-                      />
-                    </div>
-                  </div>
-                )) : (
-                  <div className="flex w-full items-center justify-center text-sm text-slate-500">No sales data for this period.</div>
+              <div className="relative px-4 py-4">
+                {data.chart.length > 0 ? (
+                  <>
+                    <svg viewBox={`0 0 ${chartMeta.width} ${chartMeta.height}`} className="h-[270px] w-full">
+                      <defs>
+                        <linearGradient id="revenueBarGradient" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="#f97316" />
+                          <stop offset="100%" stopColor="#fb7185" />
+                        </linearGradient>
+                      </defs>
+
+                      {chartMeta.tickValues.map((tickValue) => {
+                        const y = chartMeta.padding.top + chartMeta.innerHeight - (tickValue / chartMax) * chartMeta.innerHeight;
+                        return (
+                          <g key={`grid-${tickValue}`}>
+                            <line
+                              x1={chartMeta.padding.left}
+                              x2={chartMeta.width - chartMeta.padding.right}
+                              y1={y}
+                              y2={y}
+                              stroke="#f3f4f6"
+                              strokeDasharray="3 3"
+                            />
+                            <text
+                              x={chartMeta.padding.left - 10}
+                              y={y + 4}
+                              textAnchor="end"
+                              fontSize="11"
+                              fill="#64748b"
+                              fontWeight="600"
+                            >
+                              {`$${tickValue}`}
+                            </text>
+                          </g>
+                        );
+                      })}
+
+                      {data.chart.map((item, index) => {
+                        const revenue = Number(item.sales || 0);
+                        const barHeight = (revenue / chartMax) * chartMeta.innerHeight;
+                        const x = chartMeta.padding.left + index * (chartMeta.barWidth + chartMeta.barGap) + 10;
+                        const y = chartMeta.padding.top + chartMeta.innerHeight - barHeight;
+                        const isActive = hoveredBar && hoveredBar.date === item.date && hoveredBar.label === item.label;
+
+                        return (
+                          <g key={`${item.label}-${item.date}-${index}`}>
+                            <rect
+                              x={x}
+                              y={y}
+                              width={chartMeta.barWidth}
+                              height={barHeight}
+                              rx={8}
+                              ry={8}
+                              fill="url(#revenueBarGradient)"
+                              opacity={isActive ? 1 : 0.95}
+                              style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                              onMouseEnter={() => setHoveredBar({ ...item, revenue })}
+                              onMouseLeave={() => setHoveredBar(null)}
+                            />
+
+                            <text
+                              x={x + chartMeta.barWidth / 2}
+                              y={Math.max(y - 8, 18)}
+                              textAnchor="middle"
+                              fontSize="11"
+                              fill="#0f172a"
+                              fontWeight="700"
+                            >
+                              {`$${revenue.toFixed(2)}`}
+                            </text>
+
+                            <text
+                              x={x + chartMeta.barWidth / 2}
+                              y={chartMeta.height - 14}
+                              textAnchor="middle"
+                              fontSize="11"
+                              fill="#64748b"
+                              fontWeight="600"
+                            >
+                              {item.label}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+
+                    {hoveredBar && (
+                      <div className="pointer-events-none absolute left-0 top-2 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-700 shadow-lg backdrop-blur-sm">
+                        <div className="font-semibold text-slate-900">Date: {hoveredBar.date || hoveredBar.label}</div>
+                        <div>Revenue: {formatCurrency(hoveredBar.revenue)}</div>
+                        <div>Orders: {hoveredBar.orders ?? 0}</div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex min-h-[220px] w-full items-center justify-center text-sm text-slate-500">No sales data for this period.</div>
                 )}
               </div>
             </div>

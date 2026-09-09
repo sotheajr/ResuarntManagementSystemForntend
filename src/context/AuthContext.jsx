@@ -154,17 +154,18 @@ export const AuthProvider = ({ children }) => {
   const updateUserImage = useCallback(async (formData) => {
     try {
       const response = await authAPI.updateProfileImage(formData);
-      const { data } = response.data;
-      
-      if (data && data.image) {
-        // Update user in state
-        const updatedUser = { ...user, image: data.image };
+      const imageUrl = response?.data?.data?.image || response?.data?.image || null;
+
+      if (imageUrl) {
+        const updatedUser = normalizeUser({
+          ...(user || {}),
+          image: imageUrl,
+        });
+
         setUser(updatedUser);
-        
-        // Update localStorage
         localStorage.setItem('user', JSON.stringify(updatedUser));
-        
-        return { success: true, image: data.image };
+
+        return { success: true, image: imageUrl };
       }
       return { success: false, message: 'No image data returned' };
     } catch (err) {

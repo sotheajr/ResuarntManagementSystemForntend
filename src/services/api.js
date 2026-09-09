@@ -86,7 +86,7 @@ export const authAPI = {
   register: (data) => api.post('/register', data),
   profile: () => api.get('/profile'),
   logout: () => api.post('/logout'),
-  updateProfileImage: (formData) => api.put('/profile/image', formData, {
+  updateProfileImage: (formData) => api.post('/profile/image', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   updateProfile: (data) => api.put('/profile/update', data),
