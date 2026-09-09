@@ -23,11 +23,11 @@ const ProfilePage = () => {
   const selectRef = useRef(null);
 
   // Build the full image URL from the path stored in DB
-  const userImageUrl = user?.image
-    ? user.image.startsWith('http')
-      ? user.image
+  const userImageUrl = user?.avatar || user?.avatar_url || user?.image
+    ? (user?.avatar || user?.avatar_url || user?.image).startsWith('http')
+      ? (user?.avatar || user?.avatar_url || user?.image)
       : (() => {
-          let cleanPath = user.image;
+          let cleanPath = user?.avatar || user?.avatar_url || user?.image;
           if (cleanPath.startsWith('/storage/')) {
             cleanPath = cleanPath.replace('/storage/', '');
           } else if (cleanPath.startsWith('storage/')) {

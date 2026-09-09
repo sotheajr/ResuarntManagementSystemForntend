@@ -34,6 +34,8 @@ const AdminDashboard = () => {
   const [data, setData] = useState({
     summary: {},
     chart: [],
+    currentMonthWeeks: [0, 0, 0, 0],
+    previousMonthWeeks: [0, 0, 0, 0],
     paymentMethods: [],
     topItems: [],
     tableStatus: [],
@@ -53,6 +55,8 @@ const AdminDashboard = () => {
       setData({
         summary: payload.summary || {},
         chart: payload.chart || [],
+        currentMonthWeeks: payload.current_month_weeks || payload.currentMonthWeeks || [0, 0, 0, 0],
+        previousMonthWeeks: payload.previous_month_weeks || payload.previousMonthWeeks || [0, 0, 0, 0],
         paymentMethods: payload.paymentMethods || [],
         topItems: payload.topItems || [],
         tableStatus: payload.tableStatus || [],
@@ -70,20 +74,34 @@ const AdminDashboard = () => {
     fetchDashboardData(range);
   }, [range]);
 
+  const chartData = useMemo(() => {
+    const labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+    return labels.map((label, index) => ({
+      label,
+      previous: Number(data.previousMonthWeeks[index] || 0),
+      current: Number(data.currentMonthWeeks[index] || 0),
+    }));
+  }, [data.currentMonthWeeks, data.previousMonthWeeks]);
+
   const chartMax = useMemo(() => {
-    const maxValue = data.chart.reduce((max, item) => Math.max(max, Number(item.sales || 0)), 0);
-    return Math.max(5, Math.ceil((maxValue || 1) / 5) * 5);
-  }, [data.chart]);
+    const highestValue = Math.max(
+      1000,
+      ...chartData.flatMap((item) => [Number(item.previous || 0), Number(item.current || 0)])
+    );
+
+    return Math.ceil(highestValue / 100) * 100;
+  }, [chartData]);
 
   const chartMeta = useMemo(() => {
     const width = 760;
-    const height = 260;
-    const padding = { top: 24, right: 16, bottom: 42, left: 54 };
+    const height = 280;
+    const padding = { top: 20, right: 30, bottom: 42, left: 54 };
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
-    const tickValues = Array.from({ length: 6 }, (_, index) => (chartMax / 5) * index);
-    const barGap = 16;
-    const barWidth = Math.min(36, (innerWidth - (data.chart.length - 1) * barGap) / Math.max(data.chart.length, 1));
+    const tickValues = Array.from({ length: 11 }, (_, index) => index * 100);
+    const groupWidth = 120;
+    const barWidth = 24;
+    const groupGap = 24;
 
     return {
       width,
@@ -92,10 +110,11 @@ const AdminDashboard = () => {
       innerWidth,
       innerHeight,
       tickValues,
-      barGap,
+      groupWidth,
       barWidth,
+      groupGap,
     };
-  }, [chartMax, data.chart.length]);
+  }, [chartMax]);
 
   const totalPaymentValue = useMemo(
     () => data.paymentMethods.reduce((sum, item) => sum + Number(item.total || 0), 0),
@@ -196,7 +215,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Revenue overview</p>
-                  <h3 className="mt-1 text-lg font-semibold text-slate-900">{range.charAt(0).toUpperCase() + range.slice(1)} sales</h3>
+                  <h3 className="mt-1 text-lg font-semibold text-slate-900">Weekly sales</h3>
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
                   <TrendingUp className="h-4 w-4" />
@@ -204,17 +223,10 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className="relative px-4 py-4">
-                {data.chart.length > 0 ? (
-                  <>
-                    <svg viewBox={`0 0 ${chartMeta.width} ${chartMeta.height}`} className="h-[270px] w-full">
-                      <defs>
-                        <linearGradient id="revenueBarGradient" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#f97316" />
-                          <stop offset="100%" stopColor="#fb7185" />
-                        </linearGradient>
-                      </defs>
-
+              <div className="flex flex-col gap-4 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex-1">
+                  {chartData.length > 0 ? (
+                    <svg viewBox={`0 0 ${chartMeta.width} ${chartMeta.height}`} className="h-[300px] w-full">
                       {chartMeta.tickValues.map((tickValue) => {
                         const y = chartMeta.padding.top + chartMeta.innerHeight - (tickValue / chartMax) * chartMeta.innerHeight;
                         return (
@@ -224,11 +236,11 @@ const AdminDashboard = () => {
                               x2={chartMeta.width - chartMeta.padding.right}
                               y1={y}
                               y2={y}
-                              stroke="#f3f4f6"
-                              strokeDasharray="3 3"
+                              stroke="#e5e7eb"
+                              strokeWidth="1"
                             />
                             <text
-                              x={chartMeta.padding.left - 10}
+                              x={chartMeta.padding.left - 12}
                               y={y + 4}
                               textAnchor="end"
                               fontSize="11"
@@ -241,66 +253,73 @@ const AdminDashboard = () => {
                         );
                       })}
 
-                      {data.chart.map((item, index) => {
-                        const revenue = Number(item.sales || 0);
-                        const barHeight = (revenue / chartMax) * chartMeta.innerHeight;
-                        const x = chartMeta.padding.left + index * (chartMeta.barWidth + chartMeta.barGap) + 10;
-                        const y = chartMeta.padding.top + chartMeta.innerHeight - barHeight;
-                        const isActive = hoveredBar && hoveredBar.date === item.date && hoveredBar.label === item.label;
+                      {chartData.map((entry, index) => {
+                        const startX = chartMeta.padding.left + index * (chartMeta.groupWidth + chartMeta.groupGap) + 40;
+                        const previousHeight = (entry.previous / chartMax) * chartMeta.innerHeight;
+                        const currentHeight = (entry.current / chartMax) * chartMeta.innerHeight;
+                        const previousY = chartMeta.padding.top + chartMeta.innerHeight - previousHeight;
+                        const currentY = chartMeta.padding.top + chartMeta.innerHeight - currentHeight;
+                        const active = hoveredBar === entry.label;
 
                         return (
-                          <g key={`${item.label}-${item.date}-${index}`}>
+                          <g key={entry.label}>
                             <rect
-                              x={x}
-                              y={y}
+                              x={startX}
+                              y={previousY}
                               width={chartMeta.barWidth}
-                              height={barHeight}
-                              rx={8}
-                              ry={8}
-                              fill="url(#revenueBarGradient)"
-                              opacity={isActive ? 1 : 0.95}
-                              style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
-                              onMouseEnter={() => setHoveredBar({ ...item, revenue })}
+                              height={previousHeight}
+                              rx={6}
+                              ry={6}
+                              fill="#3b82f6"
+                              opacity={active ? 1 : 0.95}
+                              onMouseEnter={() => setHoveredBar(entry.label)}
                               onMouseLeave={() => setHoveredBar(null)}
+                              style={{ cursor: 'pointer' }}
+                            />
+
+                            <rect
+                              x={startX + chartMeta.barWidth + 12}
+                              y={currentY}
+                              width={chartMeta.barWidth}
+                              height={currentHeight}
+                              rx={6}
+                              ry={6}
+                              fill="#b91c1c"
+                              opacity={active ? 1 : 0.95}
+                              onMouseEnter={() => setHoveredBar(entry.label)}
+                              onMouseLeave={() => setHoveredBar(null)}
+                              style={{ cursor: 'pointer' }}
                             />
 
                             <text
-                              x={x + chartMeta.barWidth / 2}
-                              y={Math.max(y - 8, 18)}
+                              x={startX + chartMeta.barWidth + 6}
+                              y={chartMeta.height - 18}
                               textAnchor="middle"
-                              fontSize="11"
-                              fill="#0f172a"
+                              fontSize="12"
+                              fill="#334155"
                               fontWeight="700"
                             >
-                              {`$${revenue.toFixed(2)}`}
-                            </text>
-
-                            <text
-                              x={x + chartMeta.barWidth / 2}
-                              y={chartMeta.height - 14}
-                              textAnchor="middle"
-                              fontSize="11"
-                              fill="#64748b"
-                              fontWeight="600"
-                            >
-                              {item.label}
+                              {entry.label}
                             </text>
                           </g>
                         );
                       })}
                     </svg>
+                  ) : (
+                    <div className="flex min-h-[220px] w-full items-center justify-center text-sm text-slate-500">No weekly revenue data available.</div>
+                  )}
+                </div>
 
-                    {hoveredBar && (
-                      <div className="pointer-events-none absolute left-0 top-2 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-700 shadow-lg backdrop-blur-sm">
-                        <div className="font-semibold text-slate-900">Date: {hoveredBar.date || hoveredBar.label}</div>
-                        <div>Revenue: {formatCurrency(hoveredBar.revenue)}</div>
-                        <div>Orders: {hoveredBar.orders ?? 0}</div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex min-h-[220px] w-full items-center justify-center text-sm text-slate-500">No sales data for this period.</div>
-                )}
+                <div className="flex shrink-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 xl:w-44">
+                  <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                    <span className="h-3.5 w-3.5 rounded-sm bg-[#3b82f6]" />
+                    Previous Month
+                  </div>
+                  <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                    <span className="h-3.5 w-3.5 rounded-sm bg-[#b91c1c]" />
+                    Current Month
+                  </div>
+                </div>
               </div>
             </div>
 

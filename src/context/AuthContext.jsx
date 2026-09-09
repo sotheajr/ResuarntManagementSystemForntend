@@ -16,10 +16,14 @@ const normalizeUser = (user) => {
   if (!user) return null;
   const role = getUserRole(user);
   const role_id = user.role_id ?? user.Role_ID ?? user.role?.role_id ?? null;
+  const image = user.image ?? user.avatar ?? user.avatar_url ?? user.profile_image ?? null;
+  const avatar = user.avatar ?? user.avatar_url ?? user.image ?? user.profile_image ?? image;
   return {
     ...user,
     role: role || user.role,
     role_id,
+    image,
+    avatar,
   };
 };
 
@@ -154,18 +158,22 @@ export const AuthProvider = ({ children }) => {
   const updateUserImage = useCallback(async (formData) => {
     try {
       const response = await authAPI.updateProfileImage(formData);
-      const imageUrl = response?.data?.data?.image || response?.data?.image || null;
+      const payload = response?.data || {};
+      const imageUrl = payload.avatar_url || payload.avatar || payload.image || payload.user?.avatar || payload.user?.image || payload.data?.avatar_url || payload.data?.avatar || payload.data?.image || null;
 
       if (imageUrl) {
         const updatedUser = normalizeUser({
           ...(user || {}),
+          ...(payload.user || {}),
           image: imageUrl,
+          avatar: imageUrl,
+          avatar_url: imageUrl,
         });
 
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
 
-        return { success: true, image: imageUrl };
+        return { success: true, image: imageUrl, avatar: imageUrl };
       }
       return { success: false, message: 'No image data returned' };
     } catch (err) {
@@ -174,6 +182,8 @@ export const AuthProvider = ({ children }) => {
         message = err.response.data.message;
       } else if (err.response?.data?.error) {
         message = err.response.data.error;
+      } else if (err.response?.data?.errors?.image) {
+        message = err.response.data.errors.image[0];
       }
       return { success: false, message };
     }
