@@ -3,8 +3,8 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { loadStripe } from '@stripe/stripe-js';
 import { X, Loader2, CheckCircle, AlertTriangle, CreditCard } from 'lucide-react';
 
-// Load Stripe with publishable key from env or a test key for dev
-const stripePk = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_51RPn3NQvXDWFbEa4QC7cUeadd65HPn9AkRqJNphPUNwnbrGbZtQdXaPacbRkeNCvw0bXu3TljAbRwz3FqWGX0NKD00NtyvqqCs';
+// Load Stripe with the public key from env or a safe test fallback for dev
+const stripePk = import.meta.env.VITE_STRIPE_PUBLIC_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_51RPn3NQvXDWFbEa4QC7cUeadd65HPn9AkRqJNphPUNwnbrGbZtQdXaPacbRkeNCvw0bXu3TljAbRwz3FqWGX0NKD00NtyvqqCs';
 const stripePromise = loadStripe(stripePk);
 
 /**
@@ -69,25 +69,27 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
 
       {/* Card Element */}
       <div className="p-4 border border-gray-200 rounded-xl bg-white">
-        <PaymentElement
-          onReady={() => {
-            setIsReady(true);
-            setLoading(false);
-          }}
-          onLoadError={() => {
-            setLoading(false);
-            setError('Stripe payment form failed to load. Please refresh and try again.');
-          }}
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#374151',
-                '::placeholder': { color: '#9ca3af' },
+        <div className="my-4 min-h-[160px]">
+          <PaymentElement
+            onReady={() => {
+              setIsReady(true);
+              setLoading(false);
+            }}
+            onLoadError={() => {
+              setLoading(false);
+              setError('Stripe payment form failed to load. Please refresh and try again.');
+            }}
+            options={{
+              style: {
+                base: {
+                  fontSize: '16px',
+                  color: '#374151',
+                  '::placeholder': { color: '#9ca3af' },
+                },
               },
-            },
-          }}
-        />
+            }}
+          />
+        </div>
       </div>
 
       {/* Error */}
@@ -110,7 +112,7 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
         </button>
         <button
           type="submit"
-          disabled={!stripe || !isReady || loading || processing}
+          disabled={!stripe || !elements || isReady === false || loading || processing}
           className="flex-1 px-4 py-3 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 rounded-xl transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
         >
           {processing ? (
@@ -138,6 +140,8 @@ const CheckoutForm = ({ clientSecret, amount, email, orderId, onSuccess, onClose
  *   onClose       - callback to close modal
  */
 const StripeCardModal = ({ clientSecret, amount, email, orderId, onSuccess, onClose }) => {
+  console.log('Stripe clientSecret:', clientSecret);
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-scale-in overflow-hidden">
@@ -158,16 +162,20 @@ const StripeCardModal = ({ clientSecret, amount, email, orderId, onSuccess, onCl
             Order #{orderId || 'N/A'} — Secure card payment via Stripe
           </div>
 
-          <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <CheckoutForm
-              clientSecret={clientSecret}
-              amount={amount}
-              email={email}
-              orderId={orderId}
-              onSuccess={onSuccess}
-              onClose={onClose}
-            />
-          </Elements>
+          {clientSecret ? (
+            <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <CheckoutForm
+                clientSecret={clientSecret}
+                amount={amount}
+                email={email}
+                orderId={orderId}
+                onSuccess={onSuccess}
+                onClose={onClose}
+              />
+            </Elements>
+          ) : (
+            <div className="py-8 text-center text-sm text-gray-500">Loading card payment...</div>
+          )}
         </div>
 
         {/* Footer */}
