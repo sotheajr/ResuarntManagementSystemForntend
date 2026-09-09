@@ -3,7 +3,11 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { loadStripe } from '@stripe/stripe-js';
 import { X, Loader2, CheckCircle, AlertTriangle, CreditCard } from 'lucide-react';
 
-const getEnvStripeKey = () => import.meta.env.VITE_STRIPE_PUBLIC_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || null;
+const getEnvStripeKey = () =>
+  import.meta.env.VITE_STRIPE_PUBLIC_KEY ||
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ||
+  import.meta.env.STRIPE_TEST_PK ||
+  null;
 
 /**
  * Inner checkout form that handles Stripe Element submission.
@@ -163,7 +167,7 @@ const StripeCardModal = ({ clientSecret, amount, email, orderId, onSuccess, onCl
       try {
         const response = await fetch('/api/stripe/config');
         const data = await response.json();
-        const backendKey = data?.publishableKey || data?.key || data?.publishable_key;
+        const backendKey = data?.publishableKey || data?.key || data?.publishable_key || null;
 
         if (!isMounted) return;
 
